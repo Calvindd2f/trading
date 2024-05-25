@@ -1,25 +1,16 @@
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.svm import SVC
 import joblib
 import logging
 import random
-import numpy as np
 
 def load_data(filepath):
-    """
-    Load data from a CSV file.
-
-    Parameters:
-        filepath (str): The path to the CSV file.
-
-    Returns:
-        pandas.DataFrame: The loaded data as a DataFrame.
-    """
     return pd.read_csv(filepath)
 
-def preprocess_data(data):
+def preprocess_data(data, future_period=1):
     data['price_change'] = data['price'].pct_change().values
     data['volume_change'] = data['volume'].pct_change().values
     data['ma_10'] = data['price'].rolling(window=10).mean().values
@@ -30,8 +21,9 @@ def preprocess_data(data):
     data['std_50'] = data['price'].rolling(window=50).std().values
     data['momentum'] = data['price'] - data['price'].shift(4)
     data['volatility'] = data['price'].rolling(window=20).std() / data['price'].rolling(window=20).mean()
-    data['rsi'] = calculate_rsi(data['price'].values)
-    data['macd'] = calculate_macd(data['price'].values)
+    data['rsi'] = calculate_rsi(data['price'])
+    data['macd'] = calculate_macd(data['price'])
+    data['label'] = create_labels(data['price'], future_period)
     data.dropna(inplace=True)
     return data
 
@@ -49,6 +41,11 @@ def calculate_macd(series, slow=26, fast=12, signal=9):
     macd = exp1 - exp2
     signal_line = macd.ewm(span=signal, adjust=False).mean()
     return macd - signal_line
+
+def create_labels(price_series, future_period=1):
+    future_price = price_series.shift(-future_period)
+    label = (future_price > price_series).astype(int)
+    return label
 
 def train_model(data, features):
     X = data[features]
@@ -124,7 +121,7 @@ if __name__ == "__main__":
     features = ['price_change', 'volume_change', 'ma_10', 'ma_50', 'ma_200', 'ma_diff', 'std_10', 'std_50', 'momentum', 'volatility', 'rsi', 'macd']
     final_result = three_pass_training(data, features)
     logging.info(f"Final result after three passes: {final_result}")
-    if final_result > 0:
+    if (final_result > 0).all():  # Ensure all passes are successful
         best_model = train_model(data, features)['GradientBoosting']
         save_model(best_model, 'src/optimized_pump_dump_model.pkl')
     else:

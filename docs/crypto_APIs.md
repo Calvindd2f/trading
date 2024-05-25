@@ -7,6 +7,8 @@
 
 CoinGecko API is used in this sample.
 
+https://api.coingecko.com/api/v3/coins/maga-hat/market_chart?vs_currency=eur&days=0.004167
+
 ## Script to Fetch and Save Historical Data:
 
 `fetch_data.py`

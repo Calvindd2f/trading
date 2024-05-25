@@ -1,0 +1,745 @@
+/*
+    Created on : Jun 3, 2015, 9:33:11 AM
+    Author     : Fornax
+*/
+
+:root {
+	--highlight_border: inset 0px 0px 5px 1px var(--highlight_color), 0px 0px 1px 0px var(--highlight_color);
+}
+
+@font-face {
+	font-family: 'Material Icons';
+	font-style: normal;
+	font-weight: 400;
+	font-display: block;
+	src: local('Material Icons'),
+		local('MaterialIcons-Regular'),
+		url(/res/misc/MaterialIcons.woff2) format('truetype');
+}
+
+.icon {
+	font-family: 'Material Icons';
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1.5em;
+	display: inline-block;
+	line-height: 1em;
+	text-transform: none;
+	letter-spacing: normal;
+	word-wrap: normal;
+	white-space: nowrap;
+	direction: ltr;
+	text-rendering: optimizeLegibility;
+	vertical-align: middle;
+	font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.icon_unicode {
+	font-size: 1.5em;
+	display: inline-block;
+	font-weight: normal;
+	font-style: normal;
+	vertical-align: middle;
+	line-height: 1;
+}
+
+.icon.small {
+	font-size: 1.2em;
+}
+
+a>svg {
+	vertical-align: middle;
+}
+
+/* Page rendering configuration */
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	/* This makes sure that no scrollbar shows up when the menu is open on small screens*/
+	overflow-x: hidden;
+}
+
+body {
+	margin: 0;
+	font-family: system-ui, sans-serif;
+	font-size: 17px;
+	line-height: 1.5em;
+	color: var(--body_text_color);
+	background: var(--background);
+	min-height: 100vh;
+	padding: 0;
+	transition: opacity 0.2s;
+}
+
+.checkers {
+	background-image: var(--background_pattern);
+	background-color: var(--background_pattern_color);
+	background-repeat: repeat;
+}
+
+header,
+footer {
+	text-align: center;
+	overflow: hidden;
+	clear: both;
+}
+
+footer {
+	background-image: url("/res/img/nebula.webp");
+	background-color: var(--background_color);
+	background-blend-mode: luminosity;
+	box-shadow: inset 0 0 10px -4px var(--shadow_color);
+	border-radius: 8px;
+	margin: 16px;
+}
+
+footer>.footer_content {
+	background: var(--body_background);
+	color: var(--body_text_color);
+	display: inline-block;
+	width: 1000px;
+	max-width: 100%;
+	padding-top: 10px;
+	padding-bottom: 10px;
+	border-radius: 8px;
+	margin: 120px 0 60px 0;
+}
+
+header>h1 {
+	margin-top: 30px;
+	margin-bottom: 30px;
+	color: var(--background_text_color);
+}
+
+p>img {
+	max-width: 100%;
+}
+
+pre,
+code {
+	background: var(--background);
+	border-radius: 5px;
+	margin: 0;
+	padding: 0 0.2em;
+}
+
+pre {
+	overflow-x: auto;
+}
+
+pre>code {
+	background: none;
+	padding: 0;
+}
+
+/* Page layout elements */
+
+.button_toggle_navigation {
+	position: fixed;
+	backface-visibility: hidden;
+	z-index: 10;
+	top: 0;
+	left: 0;
+	padding: 8px 16px 16px 8px;
+	font-size: 2em;
+	margin: 0;
+	background: #3f3f3f;
+	background: var(--input_background);
+	border-radius: 0;
+	border-bottom-right-radius: 90%;
+}
+
+.button_toggle_navigation:active {
+	padding: 12px 14px 14px 12px;
+}
+
+.page_navigation {
+	position: fixed;
+	backface-visibility: hidden;
+	background: var(--navigation_background);
+	width: 17em;
+	height: 100%;
+	left: 0;
+	float: left;
+	padding: 20px 0 10px 0;
+	overflow-y: auto;
+	overflow-x: hidden;
+	text-align: left;
+	transition: left 0.5s;
+}
+
+.page_body {
+	position: relative;
+	right: 0;
+	height: auto;
+	left: 0;
+	margin-left: 17em;
+	min-width: 300px;
+	display: block;
+	text-align: center;
+	/* Center the header and body */
+	overflow-y: auto;
+	overflow-x: hidden;
+	transition: margin 0.5s;
+}
+
+.page_content {
+	background: var(--body_background);
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.page_content,
+.page_margins,
+footer {
+	margin-right: 16px;
+	margin-left: 16px;
+}
+
+@media (max-width: 1100px) {
+	.page_navigation {
+		left: -18em;
+	}
+
+	.page_body {
+		margin-left: 0;
+		margin-right: 0;
+		width: 100%;
+	}
+
+	.page_content,
+	.page_margins,
+	footer {
+		margin-left: 0;
+		margin-right: 0;
+	}
+
+	header>h1 {
+		/* We want the header text to appear below the menu button, so the top
+		margin needs to be fairly large when the screen is small */
+		margin-top: 60px;
+	}
+}
+
+section {
+	position: relative;
+	display: block;
+	padding: 8px;
+	max-width: 1000px;
+	width: 100%;
+	height: auto;
+	margin: auto;
+	text-align: initial;
+	clear: both;
+}
+
+/* Page contents */
+
+.page_navigation a {
+	float: none;
+	display: block;
+	color: var(--background_text_color);
+	text-align: center;
+	padding: 4px;
+	margin: 0.2em 15px 0.2em 15px;
+	font-family: 'Open Sans Light', sans-serif;
+	font-weight: lighter;
+	font-size: 1.5em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	transition: background 0.2s;
+	border-radius: 24px;
+	text-decoration: none;
+}
+
+.page_navigation a:hover {
+	background: var(--input_background);
+	color: var(--input_text);
+	text-decoration: none;
+}
+
+.highlight_shaded,
+.highlight_border,
+.highlight_green,
+.highlight_blue,
+.highlight_yellow,
+.highlight_red {
+	position: relative;
+	width: auto;
+	height: auto;
+	overflow: hidden;
+	text-align: center;
+	padding: 4px;
+	border-radius: 8px;
+}
+
+.highlight_border {
+	border: 2px solid var(--separator);
+}
+
+.highlight_shaded {
+	background: var(--card_color);
+}
+
+.highlight_green {
+	background-color: rgba(0, 255, 0, 0.1);
+	border-color: #00D000;
+}
+
+.highlight_blue {
+	background-color: rgba(0, 0, 255, 0.1);
+	border-color: #3636FF;
+}
+
+.highlight_yellow {
+	background-color: rgba(255, 255, 0, 0.1);
+	border-color: #A0A000;
+}
+
+.highlight_red {
+	background-color: rgba(255, 0, 0, 0.1);
+	border-color: #B00000;
+}
+
+.highlight_green,
+.highlight_blue,
+.highlight_yellow,
+.highlight_red {
+	border-top-width: 2px;
+	border-top-style: solid;
+	border-bottom-width: 2px;
+	border-bottom-style: solid;
+}
+
+/* Common elements */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	line-height: 1;
+	margin: 0.3em 0;
+	font-weight: lighter;
+	font-family: 'Open Sans Light', sans-serif;
+}
+
+h1 {
+	font-size: 2.4em;
+	text-align: center;
+}
+
+h2 {
+	font-size: 1.8em;
+	border-bottom: 1px var(--separator) solid;
+}
+
+h3 {
+	font-size: 1.6em;
+	border-bottom: 1px var(--separator) solid;
+}
+
+h4 {
+	font-size: 1.4em;
+	border-bottom: 1px var(--separator) solid;
+}
+
+h5 {
+	font-size: 1.2em;
+	border-bottom: 1px var(--separator) solid;
+}
+
+h6 {
+	font-size: 1em;
+	border-bottom: 1px var(--separator) solid;
+}
+
+.indent {
+	margin: 8px;
+}
+
+hr {
+	height: 1px;
+	border: none;
+	background-color: var(--separator);
+	margin: 12px;
+}
+
+a {
+	color: var(--link_color);
+}
+
+p,
+ul,
+ol {
+	margin: 0.5em 0;
+}
+
+/* Forms*/
+
+.form {
+	display: flex;
+	flex-direction: column;
+	margin-left: auto;
+	margin-right: auto;
+	text-align: initial;
+	max-width: 600px;
+	width: 100%;
+}
+
+.form>* {
+	display: block;
+	margin-left: 3px;
+	margin-right: 3px;
+}
+
+.form>label {
+	margin-top: 1em;
+}
+
+.form>input[type="submit"],
+.form>button[type="submit"] {
+	align-self: end;
+	margin-top: 1em;
+}
+
+/* Tables */
+
+table:not(.form) {
+	border-collapse: collapse;
+	width: 100%;
+}
+
+.table_scroll {
+	width: 100%;
+	overflow-x: auto;
+	overflow-y: hidden;
+	white-space: nowrap;
+}
+
+.table_scroll>table {
+	min-width: 100%;
+}
+
+tr {
+	border-bottom: 1px var(--separator) solid;
+}
+
+tr>td,
+tr>th {
+	padding: 0.2em 0.5em;
+}
+
+/* API documentation markup */
+
+.api_doc_details {
+	border-top: 1px solid;
+	border-bottom: 1px solid;
+	margin: 15px 0 15px 0;
+}
+
+.api_doc_details>summary {
+	padding: 2px;
+	font-family: monospace;
+}
+
+.api_doc_details>summary>.method {
+	display: inline-block;
+	width: 80px;
+}
+
+.api_doc_details>div {
+	padding: 8px;
+}
+
+.api_doc_details.request_get {
+	border-color: #3636ff;
+	background-color: rgba(32, 32, 255, 0.2);
+}
+
+.api_doc_details.request_post {
+	border-color: #00d000;
+	background-color: rgba(0, 255, 0, 0.05);
+}
+
+.api_doc_details.request_delete {
+	border-color: #B00000;
+	background-color: rgba(255, 0, 0, 0.05);
+}
+
+.api_doc_details.request_put {
+	border-color: #B06000;
+	background-color: rgba(255, 128, 0, 0.05);
+}
+
+.api_doc_details.request_patch {
+	border-color: #6000B0;
+	background-color: rgba(128, 0, 255, 0.1);
+}
+
+/* BUTTONS */
+button,
+.button,
+input[type="submit"],
+input[type="button"],
+input[type="color"],
+select {
+	display: inline-flex;
+	flex-direction: row;
+	border-radius: 6px;
+	margin: 2px;
+	background: var(--input_background);
+	gap: 3px;
+	padding: 3px;
+	overflow: hidden;
+	color: var(--input_text);
+	cursor: pointer;
+	box-shadow: 1px 1px 0px 0px var(--shadow_color);
+	transition: padding 0.1s, box-shadow 0.1s, background 0.1s;
+
+	/* Align content vertically in relation to the container */
+	vertical-align: middle;
+	/* Align content vertically in relation to eachother */
+	align-items: center;
+
+	/* Remove default styles set by the user-agent */
+	outline: 0;
+	font-size: 1em;
+	font-weight: normal;
+	text-decoration: none;
+	text-shadow: none;
+	border: none;
+	line-height: 1.3em;
+}
+
+button:hover,
+.button:hover,
+input[type="submit"]:hover,
+input[type="button"]:hover,
+input[type="color"]:hover,
+select:hover,
+button:focus,
+.button:focus,
+input[type="submit"]:focus,
+input[type="button"]:focus,
+input[type="color"]:focus,
+select:focus {
+	color: var(--input_text);
+	text-decoration: none;
+	background: var(--input_hover_background);
+}
+
+button:active,
+.button:active,
+input[type="submit"]:active,
+input[type="button"]:active,
+input[type="color"]:active,
+select:active {
+	box-shadow: inset 4px 4px 6px var(--shadow_color);
+	/* Exactly 3px offset compared to the inactive padding to give a depth effect */
+	padding: 6px 0px 0px 6px;
+}
+
+.button_highlight {
+	background: var(--highlight_background) !important;
+	color: var(--highlight_text_color) !important;
+}
+
+.button_red {
+	background: var(--danger_color) !important;
+	color: var(--danger_text_color) !important;
+}
+
+button:disabled,
+button.disabled,
+.button:disabled,
+.button.disabled,
+input[type="submit"]:disabled,
+input[type="submit"].disabled,
+input[type="button"]:disabled,
+input[type="button"].disabled,
+input[type="color"]:disabled,
+input[type="color"].disabled,
+select:disabled,
+select.disabled {
+	color: var(--input_disabled_text);
+	box-shadow: none;
+	transition: none;
+	padding: 3px 4px;
+	cursor: not-allowed;
+	background: var(--input_background);
+}
+
+.small_button {
+	margin: 1px;
+	padding: 1px 1px 1px 1px;
+}
+
+.small_button:active {
+	box-shadow: inset 2px 2px 4px var(--shadow_color);
+	padding: 2px 0px 0px 2px;
+}
+
+.group_first {
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+	margin-right: 0;
+}
+
+.group_middle {
+	border-radius: 0;
+	margin-left: 0;
+	margin-right: 0;
+}
+
+.group_last {
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+	margin-left: 0;
+}
+
+button>i,
+.button>i,
+button>svg,
+.button>svg {
+	vertical-align: middle;
+	line-height: 1;
+}
+
+.round {
+	border-radius: 32px;
+}
+
+.tab_bar {
+	display: block;
+	width: 100%;
+	overflow-x: auto;
+	overflow-y: hidden;
+	white-space: nowrap;
+	text-align: center;
+}
+
+.tab_bar>button,
+.tab_bar>.button {
+	margin: .5em .3em 0 .3em;
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
+	min-width: 5em;
+}
+
+/* Dropdown list of the select tag */
+option {
+	background: var(--input_background);
+	color: var(--body_text_color);
+}
+
+/* TEXT FIELDS */
+textarea,
+.groove,
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+input[type="date"],
+input[type="datetime-local"] {
+	display: inline-block;
+	margin: 2px;
+	/* Same as button, to make them align nicely */
+	border: none;
+	border-radius: 5px;
+	background: var(--input_background);
+	padding: 3px;
+	box-shadow: inset 1px 1px 0px 0px var(--shadow_color);
+	/* override user-agent style */
+	min-width: 100px;
+	color: var(--input_text);
+	font-size: 1em;
+	outline: 0;
+	transition: box-shadow 0.2s;
+}
+
+textarea:active,
+input[type="text"]:active,
+input[type="password"]:active,
+input[type="email"]:active,
+input[type="number"]:active,
+input[type="date"]:active,
+input[type="datetime-local"]:active,
+textarea:focus,
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus,
+input[type="datetime-local"]:focus {
+	box-shadow: inset 0px 0px 0px 1px var(--highlight_color);
+}
+
+textarea:disabled,
+input[type="text"]:disabled,
+input[type="password"]:disabled,
+input[type="email"]:disabled,
+input[type="number"]:disabled,
+input[type="date"]:disabled,
+input[type="datetime-local"]:disabled {
+	color: var(--input_disabled_text);
+	box-shadow: none;
+	transition: none;
+	cursor: not-allowed;
+}
+
+input[type=file] {
+	visibility: hidden;
+	position: static;
+	width: 0;
+	height: 0;
+}
+
+/* Webkit Scrollbars */
+
+::-webkit-scrollbar {
+	width: 16px;
+	/* for vertical scrollbars */
+	height: 16px;
+	/* for horizontal scrollbars */
+}
+
+::-webkit-scrollbar-track {
+	background: var(--background_color);
+}
+
+::-webkit-scrollbar-thumb {
+	background-color: var(--scrollbar_foreground_color);
+	border-radius: 10px;
+	border: 4px solid var(--background_color);
+	height: 40px;
+	width: 40px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background-color: var(--scrollbar_hover_color);
+}
+
+::-webkit-scrollbar-corner {
+	background-color: var(--body_color);
+}
+
+::-webkit-scrollbar-button:single-button {
+	background-color: var(--body_color);
+	display: block;
+	border-style: solid;
+	height: 10px;
+	width: 10px;
+}
+
+/* Firefox Scrollbar */
+
+* {
+	scrollbar-color: var(--scrollbar_foreground_color) var(--body_color);
+}
