@@ -1,7 +1,7 @@
 import sqlite3
 from datetime import datetime
 
-# Create a connection to the SQLite database
+# Update the database schema to include Sharpe ratio
 conn = sqlite3.connect('trading_bot.db')
 cursor = conn.cursor()
 
@@ -27,6 +27,9 @@ cursor.execute('''CREATE TABLE IF NOT EXISTS performance_metrics (
                     total_trades INTEGER,
                     total_profit_loss REAL,
                     max_drawdown REAL)''')
+
+# Add a new column for Sharpe ratio if it doesn't exist
+cursor.execute("ALTER TABLE performance_metrics ADD COLUMN sharpe_ratio REAL")
 
 conn.commit()
 conn.close()

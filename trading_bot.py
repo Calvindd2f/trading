@@ -8,6 +8,7 @@ import websocket
 import json
 import logging
 from sklearn.ensemble import RandomForestClassifier
+import numpy as np
 
 # Load the trained model
 model = joblib.load('pump_dump_model.pkl')
@@ -26,6 +27,24 @@ API_BASE_URL = "https://api.exchange.com"
 WEBSOCKET_URL = "wss://ws.exchange.com/realtime"
 SYMBOL = "BTCUSD"
 TRADE_AMOUNT = 0.01
+
+# Calculate Sharpe Ratio
+def calculate_sharpe_ratio(equity_curve, risk_free_rate=0.01):
+    returns = np.diff(equity_curve) / equity_curve[:-1]
+    excess_returns = returns - risk_free_rate / 252  # Daily risk-free rate assuming 252 trading days in a year
+    sharpe_ratio = np.mean(excess_returns) / np.std(excess_returns)
+    return sharpe_ratio * np.sqrt(252)  # Annualize the Sharpe ratio
+
+# Log performance metrics with Sharpe Ratio
+def log_performance_metrics(total_trades, total_profit_loss, max_drawdown, sharpe_ratio):
+    conn = sqlite3.connect('trading_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('''INSERT INTO performance_metrics (timestamp, total_trades, total_profit_loss, max_drawdown, sharpe_ratio) VALUES (?, ?, ?, ?, ?)''',
+                   (datetime.now().isoformat(), total_trades, total_profit_loss, max_drawdown, sharpe_ratio))
+    conn.commit()
+    conn.close()
+
+
 
 def fetch_historical_data_from_db():
     conn = sqlite3.connect('trading_bot.db')
@@ -274,19 +293,22 @@ def simulate_trade(side, amount):
     total_loss += trade_loss
 
     # Update equity curve
-    equity_curve.append(equity_curve[-1] - trade_loss if equity_curve else 10000 - trade_loss)  # Starting equity of 10000
+    if equity_curve:
+        equity_curve.append(equity_curve[-1] - trade_loss)
+    else:
+        equity_curve = [10000 - trade_loss]  # Starting equity of 10000
 
     logging.info(f"Simulated {side} trade for {amount} at price {trade_price}")
 
-    # Log performance metrics
+    # Calculate and log performance metrics
     max_drawdown = calculate_max_drawdown(equity_curve)
-    log_performance_metrics(trade_count, total_loss, max_drawdown)
+    sharpe_ratio = calculate_sharpe_ratio(equity_curve)
+    log_performance_metrics(trade_count, total_loss, max_drawdown, sharpe_ratio)
 
 # Execute trade and simulate performance
 def execute_trade(side, amount):
     global trade_count, total_loss, equity_curve
 
-    # Simulate trade execution (use a dummy price for simplicity)
     trade_price = historical_data.iloc[-1]['price']
     trade_loss = 0  # Simplified example without calculating actual profit/loss
 
@@ -294,13 +316,30 @@ def execute_trade(side, amount):
     total_loss += trade_loss
 
     # Update equity curve
-    equity_curve.append(equity_curve[-1] - trade_loss if equity_curve else 10000 - trade_loss)  # Starting equity of 10000
+    if equity_curve:
+        equity_curve.append(equity_curve[-1] - trade_loss)
+    else:
+        equity_curve = [10000 - trade_loss]  # Starting equity of 10000
 
     logging.info(f"Executed {side} trade for {amount} at price {trade_price}")
 
-    # Log performance metrics
+    # Calculate and log performance metrics
     max_drawdown = calculate_max_drawdown(equity_curve)
-    log_performance_metrics(trade_count, total_loss, max_drawdown)
+    sharpe_ratio = calculate_sharpe_ratio(equity_curve)
+    log_performance_metrics(trade_count, total_loss, max_drawdown, sharpe_ratio)
+
+# Main function for live testing (paper trading)
+if __name__ == "__main__":
+    historical_data = fetch_historical_data_from_db()
+    logging.info("Fetched historical data")
+
+    ws = websocket.WebSocketApp(WEBSOCKET_URL,
+                                on_open=on_open,
+                                on_message=on_message,
+                                on_error=on_error,
+                                on_close=on_close)
+    logging.info("Starting WebSocket connection")
+    ws.run_forever()
 
 # WebSocket callback for real-time data
 def on_message(ws, message):
