@@ -103,10 +103,97 @@ def execute_trade(side, amount):
     trade_result = response.json()
     logging.info(f"Executed {side} trade for {amount} {SYMBOL}. Response: {trade_result}")
 
+def store_historical_data(df):
+    conn = sqlite3.connect('trading_bot.db')
+    df.to_sql('historical_data', conn, if_exists='append', index=False)
+    conn.close()
+
+# Fetch and preprocess data
+symbols = ["BTCUSD", "ETHUSD", "LTCUSD"]  # Add more symbols as needed
+all_data = pd.concat([preprocess_data(fetch_historical_data(symbol)) for symbol in symbols])
+
+# Store preprocessed data in the database
+store_historical_data(all_data)
+
+# Define the execute_trade function
+def log_trade(trade_data, response):
+    conn = sqlite3.connect('trading_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('''INSERT INTO trade_logs (timestamp, symbol, side, quantity, price, response) VALUES (?, ?, ?, ?, ?, ?)''',
+                   (datetime.now().isoformat(), trade_data['symbol'], trade_data['side'], trade_data['quantity'], trade_data['price'], str(response)))
+    conn.commit()
+    conn.close()
+
+def log_performance_metrics(total_trades, total_profit_loss, max_drawdown):
+    conn = sqlite3.connect('trading_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('''INSERT INTO performance_metrics (timestamp, total_trades, total_profit_loss, max_drawdown) VALUES (?, ?, ?, ?)''',
+                   (datetime.now().isoformat(), total_trades, total_profit_loss, max_drawdown))
+    conn.commit()
+    conn.close()
+
+# Update the execute_trade function to log trades
+def execute_trade(side, amount):
+    trade_data = {
+        "symbol": SYMBOL,
+        "side": side,
+        "type": "market",
+        "quantity": amount
+    }
+    response = requests.post(f"{API_BASE_URL}/order", json=trade_data)
+    response.raise_for_status()  # Raise an error for bad status
+
+    trade_result = response.json()
+    logging.info(f"Executed {side} trade for {amount} {SYMBOL}. Response: {trade_result}")
+
+    # Log the trade
+    trade_data['price'] = trade_result.get('price', 0)  # Assuming the response contains the trade price
+    log_trade(trade_data, trade_result)
+
+    # Update performance metrics (simplified example)
+    global trade_count, total_loss
+    trade_count += 1
+    total_loss += trade_result.get('loss', 0)  # Assuming the response contains the trade loss
+    log_performance_metrics(trade_count, total_loss, max_drawdown=0)  # max_drawdown calculation can be added
+
+def fetch_historical_data_from_db():
+    conn = sqlite3.connect('trading_bot.db')
+    df = pd.read_sql_query("SELECT * FROM historical_data", conn)
+    conn.close()
+    return df
+
+def fetch_trade_logs():
+    conn = sqlite3.connect('trading_bot.db')
+    df = pd.read_sql_query("SELECT * FROM trade_logs", conn)
+    conn.close()
+    return df
+
+def fetch_performance_metrics():
+    conn = sqlite3.connect('trading_bot.db')
+    df = pd.read_sql_query("SELECT * FROM performance_metrics", conn)
+    conn.close()
+    return df
+
+# Example usage of analysis methods
+if __name__ == "__main__":
+    # Fetch and analyze historical data
+    historical_data_df = fetch_historical_data_from_db()
+    print(historical_data_df.describe())
+
+    # Fetch and analyze trade logs
+    trade_logs_df = fetch_trade_logs()
+    print(trade_logs_df)
+
+    # Fetch and analyze performance metrics
+    performance_metrics_df = fetch_performance_metrics()
+    print(performance_metrics_df)
+
+
 # Main function
 if __name__ == "__main__":
     historical_data = fetch_historical_data(SYMBOL)
-    logging.info("Fetched historical data")
+    store_historical_data(historical_data)
+    logging.info("Fetched and stored historical data")
 
     ws = websocket.WebSocketApp(WEBSOCKET_URL,
                                 on_open=on_open,
