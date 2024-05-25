@@ -5,6 +5,8 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 import logging
+from retrying import retry
+import time
 
 # Constants
 API_BASE_URL = "https://api.exchange.com"
@@ -13,13 +15,16 @@ SYMBOL = "BTCUSD"
 BUY_THRESHOLD = 0.05  # 5% price increase for pump detection
 SELL_THRESHOLD = -0.05  # 5% price decrease for dump detection
 TRADE_AMOUNT = 0.01  # Amount of BTC to trade
+INITIAL_BACKOFF = 1  # Initial backoff duration in seconds
 
 # Configure logging
 logging.basicConfig(filename='trading_bot.log', level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s')
 
 # Fetch historical data
+@retry(wait_exponential_multiplier=1000, wait_exponential_max=10000, stop_max_attempt_number=5)
 def fetch_historical_data(symbol):
     response = requests.get(f"{API_BASE_URL}/historical/{symbol}")
+    response.raise_for_status()  # Raise an error for bad status
     data = response.json()
     return pd.DataFrame(data)
 
@@ -76,8 +81,11 @@ def detect_anomalies():
         logging.info(f"Dump detected with change: {latest_change}")
         execute_trade("sell", TRADE_AMOUNT)
 
-# Execute trade
+# Execute trade with dynamic backoff
+@retry(wait_exponential_multiplier=1000, wait_exponential_max=10000, stop_max_attempt_number=5)
 def execute_trade(side, amount):
+    global backoff_duration
+
     trade_data = {
         "symbol": SYMBOL,
         "side": side,
@@ -85,10 +93,19 @@ def execute_trade(side, amount):
         "quantity": amount
     }
     response = requests.post(f"{API_BASE_URL}/order", json=trade_data)
+    response.raise_for_status()  # Raise an error for bad status
+
     logging.info(f"Executed {side} trade for {amount} {SYMBOL}. Response: {response.json()}")
+
+    # Adjust backoff duration based on response time
+    response_time = response.elapsed.total_seconds()
+    backoff_duration = min(backoff_duration * (1 + response_time), 60)
+    logging.info(f"Adjusted backoff duration to: {backoff_duration} seconds")
 
 # Main function
 if __name__ == "__main__":
+    backoff_duration = INITIAL_BACKOFF
+
     historical_data = fetch_historical_data(SYMBOL)
     logging.info("Fetched historical data")
 
