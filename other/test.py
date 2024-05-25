@@ -1,9 +1,7 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, call
 import pandas as pd
 from datetime import datetime, timedelta
-
-# Assume the trading bot functions are in a module named trading_bot
 from trading_bot import (
     fetch_historical_data,
     process_real_time_data,
@@ -20,61 +18,61 @@ from trading_bot import (
     INITIAL_BACKOFF,
     MAX_TRADES_PER_DAY,
     MAX_LOSS_THRESHOLD,
-    historical_data,
-    daily_trades,
-    total_loss,
-    backoff_duration
 )
 
 class TestTradingBot(unittest.TestCase):
 
     def setUp(self):
         # Set up mock historical data
-        global historical_data
-        historical_data = pd.DataFrame({
+        self.historical_data = pd.DataFrame({
             'time': [datetime.now() - timedelta(minutes=i) for i in range(100)],
             'price': [100 + i * 0.1 for i in range(100)],
             'volume': [10 for _ in range(100)]
         })
 
         # Reset global variables
-        global daily_trades, total_loss, backoff_duration
-        daily_trades = []
+        daily_trades.clear()
+        total_loss = 0
+        backoff_duration = INITIAL_BACKOFF
+
+    def tearDown(self):
+        # Reset global variables after each test method
+        daily_trades.clear()
         total_loss = 0
         backoff_duration = INITIAL_BACKOFF
 
     def test_anomaly_detection_pump(self):
         # Modify historical data to create a pump scenario
-        historical_data.at[99, 'price'] = historical_data.at[98, 'price'] * (1 + BUY_THRESHOLD + 0.01)
+        self.historical_data.at[99, 'price'] = self.historical_data.at[98, 'price'] * (1 + BUY_THRESHOLD + 0.01)
 
-        with patch('trading_bot.execute_trade') as mock_execute_trade:
+        with patch.object(execute_trade, 'execute_trade') as mock_execute_trade:
             detect_anomalies()
-            mock_execute_trade.assert_called_with("buy", TRADE_AMOUNT)
+            mock_execute_trade.assert_called_once_with("buy", TRADE_AMOUNT)
 
     def test_anomaly_detection_dump(self):
         # Modify historical data to create a dump scenario
-        historical_data.at[99, 'price'] = historical_data.at[98, 'price'] * (1 + SELL_THRESHOLD - 0.01)
+        self.historical_data.at[99, 'price'] = self.historical_data.at[98, 'price'] * (1 + SELL_THRESHOLD - 0.01)
 
-        with patch('trading_bot.execute_trade') as mock_execute_trade:
+        with patch.object(execute_trade, 'execute_trade') as mock_execute_trade:
             detect_anomalies()
-            mock_execute_trade.assert_called_with("sell", TRADE_AMOUNT)
+            mock_execute_trade.assert_called_once_with("sell", TRADE_AMOUNT)
 
     def test_trade_execution_safety_checks(self):
         global total_loss, daily_trades
 
         # Simulate maximum trades per day
-        daily_trades = [datetime.now() - timedelta(hours=i) for i in range(MAX_TRADES_PER_DAY)]
+        daily_trades[:] = [datetime.now() - timedelta(hours=i) for i in range(MAX_TRADES_PER_DAY)]
 
         with patch('requests.post') as mock_post:
             execute_trade("buy", TRADE_AMOUNT)
-            mock_post.assert_not_called()
+            self.assertFalse(mock_post.called)
 
         # Simulate maximum loss threshold
         total_loss = MAX_LOSS_THRESHOLD
 
         with patch('requests.post') as mock_post:
             execute_trade("sell", TRADE_AMOUNT)
-            mock_post.assert_not_called()
+            self.assertFalse(mock_post.called)
 
     def test_dynamic_backoff_adjustment(self):
         with patch('requests.post') as mock_post:
@@ -97,24 +95,24 @@ class TestTradingBot(unittest.TestCase):
 
         with patch('trading_bot.process_real_time_data') as mock_process:
             on_message(None, sample_message)
-            mock_process.assert_called()
+            mock_process.assert_called_once()
 
     def test_websocket_handlers(self):
         ws = MagicMock()
-        
+
         # Test on_open
         on_open(ws)
-        ws.send.assert_called()
+        ws.send.assert_called_once_with(f"{{\"symbol\":\"{SYMBOL}\"}}")
 
         # Test on_error
         with patch('logging.error') as mock_log_error:
             on_error(ws, "test error")
-            mock_log_error.assert_called_with("Error: test error")
+            mock_log_error.assert_called_once_with("Error: test error")
 
         # Test on_close
         with patch('logging.info') as mock_log_info:
             on_close(ws, 1000, "normal closure")
-            mock_log_info.assert_called_with("WebSocket closed")
+            mock_log_info.assert_called_once_with("WebSocket closed")
 
 if __name__ == '__main__':
     unittest.main()
