@@ -75,3 +75,25 @@ pypy src/main.py
 
 `pip install flask`
 `python src/app.py`
+
+------------------------
+
+### Profile the code
+
+#### Using cProfile:
+
+```bash
+python -m cProfile -o profile_output.prof src/main.py
+```
+
+#### Analyze the profile:
+
+```python
+import pstats
+
+p = pstats.Stats('profile_output.prof')
+p.sort_stats('cumulative').print_stats(10)  # Print top 10 cumulative time functions
+```
+
+------------------------
+
