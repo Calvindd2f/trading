@@ -1,17 +1,19 @@
 import sqlite3
 import logging
 from datetime import datetime
-import joblib
+
 import pandas as pd
 import requests
 import websocket
 import json
 import logging
+from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import cross_val_score
 import numpy as np
 
-# Load the trained model
-model = joblib.load('pump_dump_model.pkl')
+# Load the optimized model
+model = joblib.load('optimized_pump_dump_model.pkl')
 
 # Configure logging
 logging.basicConfig(filename='trading_bot.log', level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s')
@@ -52,11 +54,12 @@ def fetch_historical_data_from_db():
     conn.close()
     return df
 
-def log_performance_metrics(total_trades, total_profit_loss, max_drawdown):
+# Log performance metrics
+def log_performance_metrics(total_trades, total_profit_loss, max_drawdown, sharpe_ratio):
     conn = sqlite3.connect('trading_bot.db')
     cursor = conn.cursor()
-    cursor.execute('''INSERT INTO performance_metrics (timestamp, total_trades, total_profit_loss, max_drawdown) VALUES (?, ?, ?, ?)''',
-                   (datetime.now().isoformat(), total_trades, total_profit_loss, max_drawdown))
+    cursor.execute('''INSERT INTO performance_metrics (timestamp, total_trades, total_profit_loss, max_drawdown, sharpe_ratio) VALUES (?, ?, ?, ?, ?)''',
+                   (datetime.now().isoformat(), total_trades, total_profit_loss, max_drawdown, sharpe_ratio))
     conn.commit()
     conn.close()
 
@@ -71,6 +74,13 @@ def calculate_max_drawdown(equity_curve):
         if drawdown > max_drawdown:
             max_drawdown = drawdown
     return max_drawdown
+
+# Calculate Sharpe Ratio
+def calculate_sharpe_ratio(equity_curve, risk_free_rate=0.01):
+    returns = np.diff(equity_curve) / equity_curve[:-1]
+    excess_returns = returns - risk_free_rate / 252  # Daily risk-free rate assuming 252 trading days in a year
+    sharpe_ratio = np.mean(excess_returns) / np.std(excess_returns)
+    return sharpe_ratio * np.sqrt(252)  # Annualize the Sharpe ratio
 
 # Predict anomaly using the trained model
 def predict_anomaly():
@@ -211,30 +221,6 @@ def log_performance_metrics(total_trades, total_profit_loss, max_drawdown):
     conn.commit()
     conn.close()
 
-# Update the execute_trade function to log trades
-def execute_trade(side, amount):
-    trade_data = {
-        "symbol": SYMBOL,
-        "side": side,
-        "type": "market",
-        "quantity": amount
-    }
-    response = requests.post(f"{API_BASE_URL}/order", json=trade_data)
-    response.raise_for_status()  # Raise an error for bad status
-
-    trade_result = response.json()
-    logging.info(f"Executed {side} trade for {amount} {SYMBOL}. Response: {trade_result}")
-
-    # Log the trade
-    trade_data['price'] = trade_result.get('price', 0)  # Assuming the response contains the trade price
-    log_trade(trade_data, trade_result)
-
-    # Update performance metrics (simplified example)
-    global trade_count, total_loss
-    trade_count += 1
-    total_loss += trade_result.get('loss', 0)  # Assuming the response contains the trade loss
-    log_performance_metrics(trade_count, total_loss, max_drawdown=0)  # max_drawdown calculation can be added
-
 def fetch_historical_data_from_db():
     conn = sqlite3.connect('trading_bot.db')
     df = pd.read_sql_query("SELECT * FROM historical_data", conn)
@@ -267,20 +253,22 @@ if __name__ == "__main__":
     performance_metrics_df = fetch_performance_metrics()
     print(performance_metrics_df)
 
+# Cross-validation
+cv_scores = cross_val_score(best_model, X, y, cv=5)
+print(f"Cross-validation scores: {cv_scores}")
+print(f"Average CV score: {np.mean(cv_scores)}")
 
-# Main function
+# Additional backtesting
+def additional_backtesting():
+    global historical_data
+
+    for symbol in ["BTCUSD", "ETHUSD", "LTCUSD"]:
+        historical_data = preprocess_data(fetch_historical_data(symbol))
+        backtest_trading_bot(historical_data)
+
 if __name__ == "__main__":
-    historical_data = fetch_historical_data(SYMBOL)
-    store_historical_data(historical_data)
-    logging.info("Fetched and stored historical data")
+    additional_backtesting()
 
-    ws = websocket.WebSocketApp(WEBSOCKET_URL,
-                                on_open=on_open,
-                                on_message=on_message,
-                                on_error=on_error,
-                                on_close=on_close)
-    logging.info("Starting WebSocket connection")
-    ws.run_forever()
 
 # Simulate trade execution for paper trading
 def simulate_trade(side, amount):
@@ -305,7 +293,7 @@ def simulate_trade(side, amount):
     sharpe_ratio = calculate_sharpe_ratio(equity_curve)
     log_performance_metrics(trade_count, total_loss, max_drawdown, sharpe_ratio)
 
-# Execute trade and simulate performance
+# Execute trade
 def execute_trade(side, amount):
     global trade_count, total_loss, equity_curve
 
@@ -315,7 +303,6 @@ def execute_trade(side, amount):
     trade_count += 1
     total_loss += trade_loss
 
-    # Update equity curve
     if equity_curve:
         equity_curve.append(equity_curve[-1] - trade_loss)
     else:
@@ -323,23 +310,46 @@ def execute_trade(side, amount):
 
     logging.info(f"Executed {side} trade for {amount} at price {trade_price}")
 
-    # Calculate and log performance metrics
     max_drawdown = calculate_max_drawdown(equity_curve)
     sharpe_ratio = calculate_sharpe_ratio(equity_curve)
     log_performance_metrics(trade_count, total_loss, max_drawdown, sharpe_ratio)
 
-# Main function for live testing (paper trading)
-if __name__ == "__main__":
-    historical_data = fetch_historical_data_from_db()
-    logging.info("Fetched historical data")
+    # Adjust backoff logic based on strategy optimization
+    global backoff_duration
+    backoff_duration = max(1, backoff_duration * 0.9 if side == 'buy' else backoff_duration * 1.1)
 
-    ws = websocket.WebSocketApp(WEBSOCKET_URL,
-                                on_open=on_open,
-                                on_message=on_message,
-                                on_error=on_error,
-                                on_close=on_close)
-    logging.info("Starting WebSocket connection")
-    ws.run_forever()
+# Use the best model for prediction
+model = best_model
+
+# Predict anomaly using the optimized model
+def predict_anomaly():
+    global historical_data
+
+    latest_data = historical_data.iloc[-1:]
+    latest_data['price_change'] = latest_data['price'].pct_change()
+    latest_data['volume_change'] = latest_data['volume'].pct_change()
+    latest_data['ma_10'] = latest_data['price'].rolling(window=10).mean()
+    latest_data['ma_50'] = latest_data['price'].rolling(window=50).mean()
+    latest_data['ma_200'] = latest_data['price'].rolling(window=200).mean()
+    latest_data['ma_diff'] = latest_data['ma_10'] - latest_data['ma_50']
+    latest_data['std_10'] = latest_data['price'].rolling(window=10).std()
+    latest_data['std_50'] = latest_data['price'].rolling(window=50).std()
+    latest_data['momentum'] = latest_data['price'] - latest_data['price'].shift(4)
+    latest_data['volatility'] = latest_data['price'].rolling(window=20).std() / latest_data['price'].rolling(window=20).mean()
+    latest_data.dropna(inplace=True)
+
+    if latest_data.empty:
+        return
+
+    features = ['price_change', 'volume_change', 'ma_10', 'ma_50', 'ma_200', 'ma_diff', 'std_10', 'std_50', 'momentum', 'volatility']
+    X_latest = latest_data[features]
+
+    prediction = model.predict(X_latest)[0]
+
+    if prediction == 1:
+        execute_trade("buy", TRADE_AMOUNT)
+    elif prediction == -1:
+        execute_trade("sell", TRADE_AMOUNT)
 
 # WebSocket callback for real-time data
 def on_message(ws, message):
