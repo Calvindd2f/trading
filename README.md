@@ -7,6 +7,22 @@ To create a high-performance, low-latency crypto pump/dump detector, we need to 
 
 Here’s a step-by-step plan to build this:
 
+```txt
+trading_bot/
+├── data/
+│   └── historical_data.csv  # Placeholder for historical data
+├── src/
+│   ├── __init__.py
+│   ├── main.py
+│   ├── data_processing.py
+│   ├── model.py
+│   └── utils.py
+├── .gitignore
+├── requirements.txt
+└── README.md
+```
+
+
 ## Step-by-Step Plan
 
 1. Set Up Environment:
@@ -41,3 +57,15 @@ Here’s a step-by-step plan to build this:
 5. Execute trades based on detected anomalies and predefined rules
 6. Log all transactions and events for audit and analysis
 ```
+
+----------------------
+
+### Installation
+
+```sh
+source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+pip install -r requirements.txt
+
+pypy src/main.py
+```
+
