@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, Response
 from data_processing import fetch_historical_data_from_db
 from retraining.training import three_pass_training, preprocess_data, train_model, save_model
 from model import load_model
@@ -14,10 +14,7 @@ from src.main import websocket_handler
 app = Flask(__name__)
 
 # Initialize global variables for metrics
-total_loss = 0
-trade_count = 0
-equity_curve = []
-loss_threshold = -1000  # Example loss threshold
+metrics = {'total_loss': 0, 'trade_count': 0, 'equity_curve': []}
 
 # Path to the model file
 model_path = 'src/optimized_pump_dump_model.pkl'
@@ -54,13 +51,9 @@ def start_training():
 
 @app.route('/get_metrics')
 def get_metrics():
-    return jsonify({
-        'total_loss': total_loss,
-        'trade_count': trade_count,
-        'equity_curve': equity_curve
-    })
+    return jsonify(metrics)
 
-@app.route('/get_trades')
+@app.route('/get_trades', methods=['GET'])
 def get_trades():
     # Placeholder for real-time trades
     trades = [
@@ -69,7 +62,6 @@ def get_trades():
     ]
     return jsonify(trades)
 
-# Run WebSocket handler in a separate thread
 def websocket_thread():
     asyncio.run(websocket_handler())
 
