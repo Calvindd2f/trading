@@ -4,6 +4,7 @@ import json
 import numpy as np
 import pandas as pd
 from datetime import datetime
+import logging
 
 # Constants
 API_BASE_URL = "https://api.exchange.com"
@@ -12,6 +13,9 @@ SYMBOL = "BTCUSD"
 BUY_THRESHOLD = 0.05  # 5% price increase for pump detection
 SELL_THRESHOLD = -0.05  # 5% price decrease for dump detection
 TRADE_AMOUNT = 0.01  # Amount of BTC to trade
+
+# Configure logging
+logging.basicConfig(filename='trading_bot.log', level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s')
 
 # Fetch historical data
 def fetch_historical_data(symbol):
@@ -26,16 +30,17 @@ def on_message(ws, message):
 
 # WebSocket error handler
 def on_error(ws, error):
-    print(f"Error: {error}")
+    logging.error(f"Error: {error}")
 
 # WebSocket close handler
 def on_close(ws, close_status_code, close_msg):
-    print("WebSocket closed")
+    logging.info("WebSocket closed")
 
 # WebSocket open handler
 def on_open(ws):
     subscribe_message = json.dumps({"type": "subscribe", "channels": [{"name": "ticker", "product_ids": [SYMBOL]}]})
     ws.send(subscribe_message)
+    logging.info("WebSocket connection opened and subscription message sent")
 
 # Process real-time data
 def process_real_time_data(data):
@@ -47,6 +52,9 @@ def process_real_time_data(data):
     volume = float(data['volume'])
     new_row = pd.DataFrame([[timestamp, price, volume]], columns=['time', 'price', 'volume'])
     historical_data = pd.concat([historical_data, new_row]).reset_index(drop=True)
+
+    # Log received data
+    logging.info(f"Received data - Time: {timestamp}, Price: {price}, Volume: {volume}")
 
     # Check for anomalies
     detect_anomalies()
@@ -62,8 +70,10 @@ def detect_anomalies():
     latest_change = historical_data['price_change'].iloc[-1]
 
     if latest_change >= BUY_THRESHOLD:
+        logging.info(f"Pump detected with change: {latest_change}")
         execute_trade("buy", TRADE_AMOUNT)
     elif latest_change <= SELL_THRESHOLD:
+        logging.info(f"Dump detected with change: {latest_change}")
         execute_trade("sell", TRADE_AMOUNT)
 
 # Execute trade
@@ -75,15 +85,17 @@ def execute_trade(side, amount):
         "quantity": amount
     }
     response = requests.post(f"{API_BASE_URL}/order", json=trade_data)
-    print(response.json())
+    logging.info(f"Executed {side} trade for {amount} {SYMBOL}. Response: {response.json()}")
 
 # Main function
 if __name__ == "__main__":
     historical_data = fetch_historical_data(SYMBOL)
+    logging.info("Fetched historical data")
 
     ws = websocket.WebSocketApp(WEBSOCKET_URL,
                                 on_open=on_open,
                                 on_message=on_message,
                                 on_error=on_error,
                                 on_close=on_close)
+    logging.info("Starting WebSocket connection")
     ws.run_forever()
