@@ -1,7 +1,7 @@
 import os
 from flask import Flask, render_template, jsonify, request
 from data_processing import fetch_historical_data_from_db
-from .retraining.training import three_pass_training, preprocess_data, train_model, save_model
+from retraining.training import three_pass_training, preprocess_data, train_model, save_model
 from model import load_model
 import logging
 import pandas as pd
@@ -9,7 +9,7 @@ import random
 import asyncio
 import threading
 
-from .main import websocket_handler
+from src.main import websocket_handler
 
 app = Flask(__name__)
 

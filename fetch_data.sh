@@ -1,0 +1,17 @@
+curl 'https://api.coingecko.com/api/v3/coins/maga-hat/market_chart?vs_currency=eur&days=2' \
+  -H 'accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8' \
+  -H 'accept-language: en-US,en;q=0.5' \
+  -H 'cache-control: max-age=0' \
+  -H 'cookie: __cf_bm=3vZ_y6jqZDbGMKvJn2fSFGy599ARVaVuhmZBhHA02SY-1716646964-1.0.1.1-JowtmY277PntAxGllkWB3E3719ImYmNd.4cuXN7m3G19KvZ9YpjLIqPoFH4x8g5S793AlVgNdQmTlSmEGBG7EQ' \
+  -H 'if-none-match: W/"073eb5331d024709e75290659e0874cf"' \
+  -H 'priority: u=0, i' \
+  -H 'sec-ch-ua: "Brave";v="125", "Chromium";v="125", "Not.A/Brand";v="24"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "Windows"' \
+  -H 'sec-fetch-dest: document' \
+  -H 'sec-fetch-mode: navigate' \
+  -H 'sec-fetch-site: none' \
+  -H 'sec-fetch-user: ?1' \
+  -H 'sec-gpc: 1' \
+  -H 'upgrade-insecure-requests: 1' \
+  -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'

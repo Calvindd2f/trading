@@ -5,6 +5,7 @@ from sklearn.svm import SVC
 import joblib
 import logging
 import random
+import numpy as np
 
 def load_data(filepath):
     """
