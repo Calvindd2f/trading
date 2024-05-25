@@ -8,7 +8,7 @@ from aiologger import Logger
 from data_processing import fetch_historical_data_from_db, process_real_time_data
 from model import load_model, predict_anomaly
 from utils import log_performance_metrics, execute_trade
-from retraining.training import train_model, save_model
+from retraining.training import train_model, save_model, three_pass_training, preprocess_data
 
 # Configure asynchronous logger
 logger = Logger.with_default_handlers(name='trading_bot_logger')
@@ -67,22 +67,17 @@ async def cease_live_executions():
 async def retrain_model():
     logger.info("Initiating retraining session...")
     data = fetch_historical_data_from_db()
-    processed_data = preprocess_data(data)
-    best_models = train_model(processed_data)
-    best_model = best_models['GradientBoosting']  # Select the best performing model
-    save_model(best_model, 'src/optimized_pump_dump_model.pkl')
-    logger.info("Retraining completed.")
-
-# Fetch historical data for retraining
-    data = fetch_historical_data_from_db()
-    processed_data = preprocess_data(data)
-    best_models = train_model(processed_data)
-    best_model = best_models['GradientBoosting']  # Select the best performing model
-    save_model(best_model, 'src/optimized_pump_dump_model.pkl')
-    logger.info("Retraining completed.")
-    # Reload the newly trained model
-    global model
-    model = load_model('src/optimized_pump_dump_model.pkl')
+    features = ['price_change', 'volume_change', 'ma_10', 'ma_50', 'ma_200', 'ma_diff', 'std_10', 'std_50', 'momentum', 'volatility', 'rsi', 'macd']
+    final_result = three_pass_training(data, features)
+    logger.info(f"Final result after three passes: {final_result}")
+    if final_result > 0:
+        best_model = train_model(data, features)['GradientBoosting']
+        save_model(best_model, 'src/optimized_pump_dump_model.pkl')
+        global model
+        model = load_model('src/optimized_pump_dump_model.pkl')
+        logger.info("Retraining completed and model updated.")
+    else:
+        logger.warning("Training failed to achieve positive gain/loss. Model not updated.")
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()

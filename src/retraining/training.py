@@ -1,9 +1,11 @@
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.svm import SVC
 import joblib
 import logging
+import random
 
 def load_data(filepath):
     return pd.read_csv(filepath)
@@ -39,8 +41,7 @@ def calculate_macd(series, slow=26, fast=12, signal=9):
     signal_line = macd.ewm(span=signal, adjust=False).mean()
     return macd - signal_line
 
-def train_model(data):
-    features = ['price_change', 'volume_change', 'ma_10', 'ma_50', 'ma_200', 'ma_diff', 'std_10', 'std_50', 'momentum', 'volatility', 'rsi', 'macd']
+def train_model(data, features):
     X = data[features]
     y = data['label']
 
@@ -78,9 +79,44 @@ def save_model(model, filepath):
     joblib.dump(model, filepath)
     logging.info(f"Model saved to {filepath}")
 
+def select_random_cryptos(data, n=3):
+    cryptos = data['crypto'].unique()
+    return random.sample(list(cryptos), n)
+
+def three_pass_training(data, features, n_passes=3, n_cryptos=3):
+    results = []
+    for _ in range(n_passes):
+        selected_cryptos = select_random_cryptos(data, n_cryptos)
+        logging.info(f"Selected cryptos for this pass: {selected_cryptos}")
+        subset = data[data['crypto'].isin(selected_cryptos)]
+        processed_data = preprocess_data(subset)
+        best_models = train_model(processed_data, features)
+        best_model = best_models['GradientBoosting']  # or select based on performance
+        results.append(evaluate_model(best_model, processed_data, features))
+
+    return aggregate_results(results)
+
+def evaluate_model(model, data, features):
+    X = data[features]
+    y = data['label']
+    y_pred = model.predict(X)
+    gain_loss = calculate_gain_loss(y, y_pred)
+    return gain_loss
+
+def calculate_gain_loss(y_true, y_pred):
+    # Simplified example to calculate gain/loss
+    return np.sum((y_pred == y_true) * 1.0) - np.sum((y_pred != y_true) * 1.0)
+
+def aggregate_results(results):
+    return np.mean(results)
+
 if __name__ == "__main__":
     data = load_data('data/historical_data.csv')
-    processed_data = preprocess_data(data)
-    best_models = train_model(processed_data)
-    best_model = best_models['GradientBoosting']  # Select the best performing model
-    save_model(best_model, 'src/optimized_pump_dump_model.pkl')
+    features = ['price_change', 'volume_change', 'ma_10', 'ma_50', 'ma_200', 'ma_diff', 'std_10', 'std_50', 'momentum', 'volatility', 'rsi', 'macd']
+    final_result = three_pass_training(data, features)
+    logging.info(f"Final result after three passes: {final_result}")
+    if final_result > 0:
+        best_model = train_model(data, features)['GradientBoosting']
+        save_model(best_model, 'src/optimized_pump_dump_model.pkl')
+    else:
+        logging.warning("Training failed to achieve positive gain/loss. Model not updated.")
