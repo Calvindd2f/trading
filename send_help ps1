@@ -60,7 +60,7 @@ Function Unfuck($retryCount = 5)
             $webClient.DownloadFileAsync($url, "C:\temp\pypy.zip")
             $webClient.DownloadFileCompleted += 
             {
-                $success = $true
+                [string]$success = $true
                 $count = $retry
             }
             $webClient.DownloadFileTaskAsync($url, "C:\temp\pypy.zip").Wait()

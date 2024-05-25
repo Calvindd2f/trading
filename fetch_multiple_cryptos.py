@@ -1,101 +1,52 @@
-import asyncio
 import aiohttp
-from anyio import Path
-#import requests
+import asyncio
 import pandas as pd
+import numpy as np
+import t
 
-
-
-
-async def fetch_historical_data(crypto_id: str, vs_currency: str, days: int) -> dict:
-    if crypto_id is None or vs_currency is None or days is None:
-        raise ValueError("Arguments cannot be None")
+async def fetch_historical_data(crypto_id, vs_currency, days):
     url = f'https://api.coingecko.com/api/v3/coins/{crypto_id}/market_chart'
     params = {
         'vs_currency': vs_currency,
         'days': days,
         #'interval': 'hourly'
     }
-    print(f"Fetching data for {crypto_id} from Coingecko API")
-    print(f"URL: {url}")
-    print(f"Parameters: {params}")
-    
     async with aiohttp.ClientSession() as session:
         async with session.get(url, params=params) as response:
             data = await response.json()
             return data
 
-    #response = requests.get(url, params=params)
-    #print(f"Status code: {response.status_code}")
-    #if response.status_code != 200:
-    #    raise Exception(f"Failed to fetch data for {crypto_id}. Status code: {response.status_code}")
-    #data = response.json()
-    #if data is None:
-    #    raise Exception(f"Failed to fetch data for {crypto_id}. No response found.")
-    #print(f"Data: {data}")
-    #return data
-
-
-def remove_bom(data):
-    if data is None:
-        raise ValueError("Cannot remove BOM from None")
-    bom = b'\xef\xbb\xbf'
-    if data.startswith(bom):
-        print(f"Remove BOM from data: {data[:10]}")
-        return data[len(bom):]
-    print(f"No BOM found in data: {data[:10]}")
-    return data
-
-
-def process_data(data: dict, crypto_id: str) -> pd.DataFrame:
-    """
-    Process the data fetched from the Coingecko API.
-
-    Args:
-        data (dict): The response from the Coingecko API.
-        crypto_id (str): The id of the cryptocurrency that the data is for.
-
-    Returns:
-        pd.DataFrame: The processed DataFrame.
-
-    Raises:
-        ValueError: If the data is empty or no response is found.
-        KeyError: If the required keys are not found in the response.
-    """
-    print(f"Processing data for {crypto_id}")
-    if data is None:
-        raise ValueError(f"Failed to fetch data for {crypto_id}. No response found.")
+def process_data(data, crypto_id):
     if 'prices' not in data or 'total_volumes' not in data:
         raise KeyError("Expected keys not found in the API response")
 
     prices = data['prices']
     volumes = data['total_volumes']
 
-    # Create a DataFrame
     df = pd.DataFrame(prices, columns=['timestamp', 'price'])
     df['volume'] = [v[1] for v in volumes]
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-    df['crypto'] = crypto_id  # Add the crypto column
-
-    print(f"DataFrame: {df}")
+    df['crypto'] = crypto_id
     return df
 
+def calculate_indicators(df):
+    df['price_change'] = df['price'].pct_change()
+    df['volume_change'] = df['volume'].pct_change()
+    df['ma_10'] = talib.SMA(df['price'], timeperiod=10)
+    df['ma_50'] = talib.SMA(df['price'], timeperiod=50)
+    df['ma_200'] = talib.SMA(df['price'], timeperiod=200)
+    df['ma_diff'] = df['ma_10'] - df['ma_50']
+    df['std_10'] = df['price'].rolling(window=10).std()
+    df['std_50'] = df['price'].rolling(window=50).std()
+    df['momentum'] = talib.MOM(df['price'], timeperiod=4)
+    df['volatility'] = df['price'].rolling(window=20).std() / df['price'].rolling(window=20).mean()
+    df['rsi'] = talib.RSI(df['price'], timeperiod=14)
+    df['macd'], macdsignal, macdhist = talib.MACD(df['price'], fastperiod=12, slowperiod=26, signalperiod=9)
+    return df
 
 def save_data(df, filename):
-    if df is None:
-        raise ValueError(f"Failed to save data to {filename}. No DataFrame provided.")
-    if not isinstance(df, pd.DataFrame):
-        raise TypeError(f"Expected a pandas DataFrame but got {type(df).__name__}")
-    if not filename:
-        raise ValueError(f"Failed to save data to file. No filename provided.")
-    filepath = Path(filename)
-    if not filepath.parent.exists():
-        filepath.parent.mkdir(parents=True)
-    try:
-        df.to_csv(filename, index=False)
-        print(f"Data saved to {filename}")
-    except Exception as e:
-        raise ValueError(f"Failed to save data to {filename}. Error: {e}") from e
+    df.to_csv(filename, index=False)
+    print(f"Data saved to {filename}")
 
 async def main():
     crypto_ids = ['bitcoin', 'ethereum', 'litecoin']  # Example cryptocurrencies
@@ -105,9 +56,10 @@ async def main():
     combined_df = pd.DataFrame()
 
     for crypto_id in crypto_ids:
-        print(f"Fetching data for {crypto_id} from Coingecko API")
+        print(f"Fetching data for {crypto_id} from CoinGecko API")
         data = await fetch_historical_data(crypto_id, vs_currency, days)
         df = process_data(data, crypto_id)
+        df = calculate_indicators(df)
         combined_df = pd.concat([combined_df, df])
 
     save_data(combined_df, 'data/historical_data.csv')
