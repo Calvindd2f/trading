@@ -1,12 +1,15 @@
+import os
 from flask import Flask, render_template, jsonify, request
 from data_processing import fetch_historical_data_from_db
-from retraining.training import three_pass_training, preprocess_data, train_model, save_model
+from .retraining.training import three_pass_training, preprocess_data, train_model, save_model
 from model import load_model
 import logging
 import pandas as pd
 import random
 import asyncio
 import threading
+
+from .main import websocket_handler
 
 app = Flask(__name__)
 
@@ -16,8 +19,14 @@ trade_count = 0
 equity_curve = []
 loss_threshold = -1000  # Example loss threshold
 
-# Load initial model
-model = load_model('src/optimized_pump_dump_model.pkl')
+# Path to the model file
+model_path = 'src/optimized_pump_dump_model.pkl'
+
+# Load initial model if it exists, otherwise log an error
+if os.path.exists(model_path):
+    model = load_model(model_path)
+else:
+    logging.error(f"Model file not found at {model_path}. Please generate the model first.")
 
 # Fetch historical data
 historical_data = fetch_historical_data_from_db()
@@ -34,9 +43,9 @@ def start_training():
     logging.info(f"Final result after three passes: {final_result}")
     if final_result > 0:
         best_model = train_model(data, features)['GradientBoosting']
-        save_model(best_model, 'src/optimized_pump_dump_model.pkl')
+        save_model(best_model, model_path)
         global model
-        model = load_model('src/optimized_pump_dump_model.pkl')
+        model = load_model(model_path)
         logging.info("Retraining completed and model updated.")
         return jsonify({'status': 'success', 'message': 'Retraining completed successfully.'})
     else:

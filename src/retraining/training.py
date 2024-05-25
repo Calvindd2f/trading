@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.svm import SVC
@@ -8,6 +7,15 @@ import logging
 import random
 
 def load_data(filepath):
+    """
+    Load data from a CSV file.
+
+    Parameters:
+        filepath (str): The path to the CSV file.
+
+    Returns:
+        pandas.DataFrame: The loaded data as a DataFrame.
+    """
     return pd.read_csv(filepath)
 
 def preprocess_data(data):
