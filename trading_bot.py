@@ -39,10 +39,7 @@ WEBSOCKET_URL = "wss://ws.exchange.com/realtime"
 SYMBOL = "BTCUSD"
 TRADE_AMOUNT = 0.01
 
-# Calculate position size based on risk management
-def calculate_position_size(account_balance, risk_per_trade):
-    position_size = account_balance * risk_per_trade
-    return min(position_size, MAX_POSITION_SIZE)
+
 
 # Log performance metrics with Sharpe Ratio
 def log_performance_metrics(total_trades, total_profit_loss, max_drawdown, sharpe_ratio):
@@ -53,6 +50,7 @@ def log_performance_metrics(total_trades, total_profit_loss, max_drawdown, sharp
     conn.commit()
     conn.close()
 
+# Fetch historical data from the database
 def fetch_historical_data_from_db():
     conn = sqlite3.connect('trading_bot.db')
     df = pd.read_sql_query("SELECT * FROM historical_data", conn)
@@ -63,7 +61,7 @@ def fetch_historical_data_from_db():
 @jit(nopython=True)
 def calculate_max_drawdown(equity_curve):
     peak = equity_curve[0]
-    max_drawdown = 0
+    max_drawdown = 0.0
     for value in equity_curve:
         if value > peak:
             peak = value
@@ -71,13 +69,19 @@ def calculate_max_drawdown(equity_curve):
         if drawdown > max_drawdown:
             max_drawdown = drawdown
     return max_drawdown
+
 # Calculate Sharpe Ratio
-@jit(nopython=True)
+@jit(nopython=True)@jit(nopython=True)
 def calculate_sharpe_ratio(equity_curve, risk_free_rate=0.01):
     returns = np.diff(equity_curve) / equity_curve[:-1]
     excess_returns = returns - risk_free_rate / 252  # Daily risk-free rate assuming 252 trading days in a year
     sharpe_ratio = np.mean(excess_returns) / np.std(excess_returns)
     return sharpe_ratio * np.sqrt(252)  # Annualize the Sharpe ratio
+
+# Calculate position size based on risk management
+def calculate_position_size(account_balance, risk_per_trade):
+    position_size = account_balance * risk_per_trade
+    return min(position_size, MAX_POSITION_SIZE)
 
 # Fetch historical data for initial processing
 def fetch_historical_data(symbol):
@@ -125,11 +129,12 @@ def log_trade(trade_data, response):
     conn.commit()
     conn.close()
 
-def log_performance_metrics(total_trades, total_profit_loss, max_drawdown):
+# Log performance metrics
+def log_performance_metrics(total_trades, total_profit_loss, max_drawdown, sharpe_ratio):
     conn = sqlite3.connect('trading_bot.db')
     cursor = conn.cursor()
-    cursor.execute('''INSERT INTO performance_metrics (timestamp, total_trades, total_profit_loss, max_drawdown) VALUES (?, ?, ?, ?)''',
-                   (datetime.now().isoformat(), total_trades, total_profit_loss, max_drawdown))
+    cursor.execute('''INSERT INTO performance_metrics (timestamp, total_trades, total_profit_loss, max_drawdown, sharpe_ratio) VALUES (?, ?, ?, ?, ?)''',
+                   (datetime.now().isoformat(), total_trades, total_profit_loss, max_drawdown, sharpe_ratio))
     conn.commit()
     conn.close()
 
@@ -226,8 +231,8 @@ def execute_trade(side, amount):
 
     logging.info(f"Executed {side} trade for {trade_amount} at price {trade_price}, stop loss at {stop_loss_price}")
 
-    max_drawdown = calculate_max_drawdown(equity_curve)
-    sharpe_ratio = calculate_sharpe_ratio(equity_curve)
+    max_drawdown = calculate_max_drawdown(np.array(equity_curve))
+    sharpe_ratio = calculate_sharpe_ratio(np.array(equity_curve))
     log_performance_metrics(trade_count, total_loss, max_drawdown, sharpe_ratio)
 
     # Adjust backoff logic based on strategy optimization
@@ -397,3 +402,4 @@ if __name__ == "__main__":
     import threading
     ws_thread = threading.Thread(target=ws.run_forever)
     ws_thread.start()
+    ws.run_forever()
