@@ -69,3 +69,9 @@ pip install -r requirements.txt
 pypy src/main.py
 ```
 
+-----------------------
+
+### Minimal Frontend
+
+`pip install flask`
+`python src/app.py`

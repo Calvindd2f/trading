@@ -8,6 +8,7 @@ def fetch_historical_data_from_db():
     conn.close()
     return df
 
+
 def process_real_time_data(data, predict_anomaly):
     global historical_data
 
