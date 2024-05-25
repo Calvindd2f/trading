@@ -1,5 +1,21 @@
-pandas
-numpy
-websocket-client
-joblib
-numba
+# Import necessary libraries
+import pandas as pd
+import numpy as np
+import websocket
+from joblib import dump, load
+import numba
+
+# Optionally, you can specify the version of the packages to ensure consistency
+# pd.__version__ = '1.2.3'
+# np.__version__ = '1.21.0'
+# websocket.__version__ = '1.3.2'
+# joblib.__version__ = '1.1.0'
+# numba.__version__ = '0.53.1'
+
+# You can also add any necessary context or comments to your code
+# for better readability and understanding
+
+# Example usage:
+# df = pd.DataFrame(np.random.rand(10, 5))
+# dump(df, 'df.joblib')  # Save DataFrame to disk
+# loaded_df = load('df.joblib')  # Load DataFrame from disk
