@@ -2,7 +2,7 @@ import joblib
 import pandas as pd
 from utils import execute_trade
 from sklearn.model_selection import cross_val_score
-from sklearn.ensemble import VotingClassifier,
+from sklearn.ensemble import VotingClassifier
 from sklearn.metrics import classification_report, accuracy_score
 from sklearn.linear_model import LogisticRegression
 
