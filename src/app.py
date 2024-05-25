@@ -1,50 +1,70 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 from data_processing import fetch_historical_data_from_db
-from model import load_model, predict_anomaly
+from retraining.training import three_pass_training, preprocess_data, train_model, save_model
+from model import load_model
+import logging
+import pandas as pd
+import random
+import asyncio
 import threading
 
 app = Flask(__name__)
 
-# Load model
-model = load_model()
+# Initialize global variables for metrics
+total_loss = 0
+trade_count = 0
+equity_curve = []
+loss_threshold = -1000  # Example loss threshold
 
-# Endpoint to get historical data
-@app.route('/data')
-def get_data():
-    data = fetch_historical_data_from_db()
-    return data.to_json(orient='records')
+# Load initial model
+model = load_model('src/optimized_pump_dump_model.pkl')
 
-# Main route to render the homepage
+# Fetch historical data
+historical_data = fetch_historical_data_from_db()
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
+@app.route('/start_training', methods=['POST'])
+def start_training():
+    data = fetch_historical_data_from_db()
+    features = ['price_change', 'volume_change', 'ma_10', 'ma_50', 'ma_200', 'ma_diff', 'std_10', 'std_50', 'momentum', 'volatility', 'rsi', 'macd']
+    final_result = three_pass_training(data, features)
+    logging.info(f"Final result after three passes: {final_result}")
+    if final_result > 0:
+        best_model = train_model(data, features)['GradientBoosting']
+        save_model(best_model, 'src/optimized_pump_dump_model.pkl')
+        global model
+        model = load_model('src/optimized_pump_dump_model.pkl')
+        logging.info("Retraining completed and model updated.")
+        return jsonify({'status': 'success', 'message': 'Retraining completed successfully.'})
+    else:
+        logging.warning("Training failed to achieve positive gain/loss. Model not updated.")
+        return jsonify({'status': 'failure', 'message': 'Retraining failed to achieve positive gain/loss.'})
+
+@app.route('/get_metrics')
+def get_metrics():
+    return jsonify({
+        'total_loss': total_loss,
+        'trade_count': trade_count,
+        'equity_curve': equity_curve
+    })
+
+@app.route('/get_trades')
+def get_trades():
+    # Placeholder for real-time trades
+    trades = [
+        {'time': '2023-05-01T12:34:56', 'type': 'buy', 'amount': 1.2, 'price': 50000},
+        {'time': '2023-05-01T12:35:56', 'type': 'sell', 'amount': 0.5, 'price': 50500}
+    ]
+    return jsonify(trades)
+
+# Run WebSocket handler in a separate thread
+def websocket_thread():
+    asyncio.run(websocket_handler())
+
 if __name__ == '__main__':
-    # Start the WebSocket thread
-    def start_websocket():
-        import websocket
-        import json
-
-        def on_message(ws, message):
-            data = json.loads(message)
-            process_real_time_data(data, predict_anomaly)
-
-        def on_error(ws, error):
-            print(f"Error: {error}")
-
-        def on_close(ws, close_status_code, close_msg):
-            print("WebSocket closed")
-
-        def on_open(ws):
-            subscribe_message = json.dumps({"type": "subscribe", "channels": [{"name": "ticker", "product_ids": ["BTCUSD"]}]})
-            ws.send(subscribe_message)
-            print("WebSocket connection opened and subscription message sent")
-
-        ws = websocket.WebSocketApp("wss://example.com/realtime", on_open=on_open, on_message=on_message, on_error=on_error, on_close=on_close)
-        ws.run_forever()
-
-    websocket_thread = threading.Thread(target=start_websocket)
-    websocket_thread.start()
-
-    # Run Flask app
+    logging.basicConfig(level=logging.INFO)
+    threading.Thread(target=websocket_thread).start()
     app.run(debug=True)

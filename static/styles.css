@@ -1,0 +1,37 @@
+body {
+    background-color: #121212;
+    color: #e0e0e0;
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+h1, h2 {
+    color: #90caf9;
+}
+
+button {
+    background-color: #1e88e5;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #1565c0;
+}
+
+.metrics, .controls, .trades {
+    margin-bottom: 20px;
+}
+
+#metrics, #trades {
+    background-color: #1e1e1e;
+    padding: 10px;
+    border-radius: 5px;
+}

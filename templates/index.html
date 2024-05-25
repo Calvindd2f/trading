@@ -5,15 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trading Bot Dashboard</title>
     <script src="https://unpkg.com/htmx.org@1.5.0"></script>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
-    <style>
-        body { font-family: Arial, sans-serif; }
-        #data { margin-top: 20px; }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <h1>Trading Bot Dashboard</h1>
-    <button hx-get="/data" hx-trigger="click" hx-target="#data">Load Historical Data</button>
-    <div id="data"></div>
+    <div class="container">
+        <h1>Trading Bot Dashboard</h1>
+        <div class="metrics">
+            <h2>Metrics</h2>
+            <div id="metrics" hx-get="/get_metrics" hx-trigger="load, every 10s">
+                <!-- Metrics will be loaded here -->
+            </div>
+        </div>
+        <div class="controls">
+            <h2>Controls</h2>
+            <button hx-post="/start_training" hx-trigger="click" hx-target="#training-status">Start Training</button>
+            <div id="training-status">
+                <!-- Training status will be displayed here -->
+            </div>
+        </div>
+        <div class="trades">
+            <h2>Live Trades</h2>
+            <div id="trades" hx-get="/get_trades" hx-trigger="load, every 5s">
+                <!-- Live trades will be loaded here -->
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
+
