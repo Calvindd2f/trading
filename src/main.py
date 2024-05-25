@@ -73,6 +73,17 @@ async def retrain_model():
     save_model(best_model, 'src/optimized_pump_dump_model.pkl')
     logger.info("Retraining completed.")
 
+# Fetch historical data for retraining
+    data = fetch_historical_data_from_db()
+    processed_data = preprocess_data(data)
+    best_models = train_model(processed_data)
+    best_model = best_models['GradientBoosting']  # Select the best performing model
+    save_model(best_model, 'src/optimized_pump_dump_model.pkl')
+    logger.info("Retraining completed.")
+    # Reload the newly trained model
+    global model
+    model = load_model('src/optimized_pump_dump_model.pkl')
+
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     loop.run_until_complete(websocket_handler())
