@@ -2,6 +2,31 @@ import pandas as pd
 import joblib
 from datetime import datetime, timedelta
 
+
+def preprocess_data(df):
+    df['price_change'] = df['price'].pct_change()
+    df['volume_change'] = df['volume'].pct_change()
+    df['ma_10'] = df['price'].rolling(window=10).mean()
+    df['ma_50'] = df['price'].rolling(window=50).mean()
+    df['ma_200'] = df['price'].rolling(window=200).mean()
+    df['ma_diff'] = df['ma_10'] - df['ma_50']
+    df['std_10'] = df['price'].rolling(window=10).std()
+    df['std_50'] = df['price'].rolling(window=50).std()
+    df['momentum'] = df['price'] - df['price'].shift(4)
+    df['volatility'] = df['price'].rolling(window=20).std() / df['price'].rolling(window=20).mean()
+    df['label'] = 0  # Default label for normal behavior
+    df.loc[df['price_change'] >= BUY_THRESHOLD, 'label'] = 1  # Label for pump
+    df.loc[df['price_change'] <= SELL_THRESHOLD, 'label'] = -1  # Label for dump
+    df.dropna(inplace=True)
+    return df
+
+# Load historical data
+symbols = ["BTCUSD", "ETHUSD", "LTCUSD"]
+all_data = pd.concat([preprocess_data(fetch_historical_data(symbol)) for symbol in symbols])
+
+# Save preprocessed data
+all_data.to_csv('historical_data.csv', index=False)
+
 # Load the trained model
 model = joblib.load('pump_dump_model.pkl')
 
@@ -28,55 +53,54 @@ def backtest_trading_bot(historical_data):
     print(f"Total Trades: {trade_count}")
     print(f"Total Loss: {total_loss}")
 
-# Process historical data for backtesting
-def process_historical_data(timestamp, price, volume):
-    global historical_data
 
-    new_row = pd.DataFrame([[timestamp, price, volume]], columns=['time', 'price', 'volume'])
-    historical_data = pd.concat([historical_data, new_row]).reset_index(drop=True)
-    predict_anomaly()
+# Load preprocessed data
+data = pd.read_csv('historical_data.csv')
 
-# Predict anomaly using the trained model
-def predict_anomaly():
-    global historical_data
+# Define features and labels
+features = ['price_change', 'volume_change', 'ma_10', 'ma_50', 'ma_200', 'ma_diff', 'std_10', 'std_50', 'momentum', 'volatility']
+X = data[features]
+y = data['label']
 
-    latest_data = historical_data.iloc[-1:]
-    latest_data['price_change'] = latest_data['price'].pct_change()
-    latest_data['volume_change'] = latest_data['volume'].pct_change()
-    latest_data['ma_10'] = latest_data['price'].rolling(window=10).mean()
-    latest_data['ma_50'] = latest_data['price'].rolling(window=50).mean()
-    latest_data['ma_200'] = latest_data['price'].rolling(window=200).mean()
-    latest_data['ma_diff'] = latest_data['ma_10'] - latest_data['ma_50']
-    latest_data.dropna(inplace=True)
+# Split data into training and testing sets
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    if latest_data.empty:
-        return
+# Evaluate different models
+models = {
+    'RandomForest': RandomForestClassifier(n_estimators=100, random_state=42),
+    'GradientBoosting': GradientBoostingClassifier(n_estimators=100, random_state=42),
+    'SVM': SVC(kernel='rbf', random_state=42)
+}
 
-    features = ['price_change', 'volume_change', 'ma_10', 'ma_50', 'ma_200', 'ma_diff']
-    X_latest = latest_data[features]
+for model_name, model in models.items():
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    print(f"Model: {model_name}")
+    print(classification_report(y_test, y_pred))
+    print(f"Accuracy: {accuracy_score(y_test, y_pred)}\n")
 
-    prediction = model.predict(X_latest)[0]
+# Example for RandomForest
+param_grid = {
+    'n_estimators': [50, 100, 200],
+    'max_depth': [None, 10, 20, 30],
+    'min_samples_split': [2, 5, 10],
+    'min_samples_leaf': [1, 2, 4]
+}
 
-    if prediction == 1:
-        execute_trade("buy", TRADE_AMOUNT)
-    elif prediction == -1:
-        execute_trade("sell", TRADE_AMOUNT)
+grid_search = GridSearchCV(estimator=RandomForestClassifier(random_state=42),
+                           param_grid=param_grid,
+                           cv=3,
+                           n_jobs=-1,
+                           verbose=2)
 
-# Execute trade and simulate performance
-def execute_trade(side, amount):
-    global trade_count, total_loss
+grid_search.fit(X_train, y_train)
+print(f"Best parameters: {grid_search.best_params_}")
+best_model = grid_search.best_estimator_
 
-    # Simulate trade execution (use a dummy price for simplicity)
-    trade_price = historical_data.iloc[-1]['price']
-    trade_loss = 0  # Simplified example without calculating actual profit/loss
+# Evaluate the best model
+y_pred = best_model.predict(X_test)
+print(classification_report(y_test, y_pred))
+print(f"Accuracy: {accuracy_score(y_test, y_pred)}")
 
-    trade_count += 1
-    total_loss += trade_loss
 
-    # Log the trade (in real application, store it in the database)
-    print(f"Executed {side} trade for {amount} at price {trade_price}")
-
-# Main function for backtesting
-if __name__ == "__main__":
-    historical_data = fetch_historical_data_from_db()
-    backtest_trading_bot(historical_data)

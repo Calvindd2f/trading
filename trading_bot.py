@@ -12,7 +12,7 @@ from sklearn.svm import SVC
 from sklearn.metrics import classification_report, accuracy_score
 import schedule # Schedule periodic review
 import time
-
+from numba import jit
 import numpy as np
 
 # Load the optimized model
@@ -43,13 +43,6 @@ def calculate_position_size(account_balance, risk_per_trade):
     position_size = account_balance * risk_per_trade
     return min(position_size, MAX_POSITION_SIZE)
 
-# Calculate Sharpe Ratio
-def calculate_sharpe_ratio(equity_curve, risk_free_rate=0.01):
-    returns = np.diff(equity_curve) / equity_curve[:-1]
-    excess_returns = returns - risk_free_rate / 252  # Daily risk-free rate assuming 252 trading days in a year
-    sharpe_ratio = np.mean(excess_returns) / np.std(excess_returns)
-    return sharpe_ratio * np.sqrt(252)  # Annualize the Sharpe ratio
-
 # Log performance metrics with Sharpe Ratio
 def log_performance_metrics(total_trades, total_profit_loss, max_drawdown, sharpe_ratio):
     conn = sqlite3.connect('trading_bot.db')
@@ -59,8 +52,6 @@ def log_performance_metrics(total_trades, total_profit_loss, max_drawdown, sharp
     conn.commit()
     conn.close()
 
-
-
 def fetch_historical_data_from_db():
     conn = sqlite3.connect('trading_bot.db')
     df = pd.read_sql_query("SELECT * FROM historical_data", conn)
@@ -68,6 +59,7 @@ def fetch_historical_data_from_db():
     return df
 
 # Calculate maximum drawdown
+@jit(nopython=True)
 def calculate_max_drawdown(equity_curve):
     peak = equity_curve[0]
     max_drawdown = 0
@@ -78,14 +70,13 @@ def calculate_max_drawdown(equity_curve):
         if drawdown > max_drawdown:
             max_drawdown = drawdown
     return max_drawdown
-
 # Calculate Sharpe Ratio
+@jit(nopython=True)
 def calculate_sharpe_ratio(equity_curve, risk_free_rate=0.01):
     returns = np.diff(equity_curve) / equity_curve[:-1]
     excess_returns = returns - risk_free_rate / 252  # Daily risk-free rate assuming 252 trading days in a year
     sharpe_ratio = np.mean(excess_returns) / np.std(excess_returns)
     return sharpe_ratio * np.sqrt(252)  # Annualize the Sharpe ratio
-
 
 # Fetch historical data for initial processing
 def fetch_historical_data(symbol):
