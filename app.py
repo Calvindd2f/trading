@@ -3,7 +3,7 @@ import websocket
 import json
 import numpy as np
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from retrying import retry
 import time
@@ -16,6 +16,13 @@ BUY_THRESHOLD = 0.05  # 5% price increase for pump detection
 SELL_THRESHOLD = -0.05  # 5% price decrease for dump detection
 TRADE_AMOUNT = 0.01  # Amount of BTC to trade
 INITIAL_BACKOFF = 1  # Initial backoff duration in seconds
+MAX_TRADES_PER_DAY = 10
+MAX_LOSS_THRESHOLD = 1000  # Maximum allowable loss in USD
+
+# Global variables for trade tracking
+trade_count = 0
+daily_trades = []
+total_loss = 0
 
 # Configure logging
 logging.basicConfig(filename='trading_bot.log', level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s')
@@ -81,10 +88,23 @@ def detect_anomalies():
         logging.info(f"Dump detected with change: {latest_change}")
         execute_trade("sell", TRADE_AMOUNT)
 
-# Execute trade with dynamic backoff
+# Execute trade with dynamic backoff and safety checks
 @retry(wait_exponential_multiplier=1000, wait_exponential_max=10000, stop_max_attempt_number=5)
 def execute_trade(side, amount):
-    global backoff_duration
+    global backoff_duration, trade_count, daily_trades, total_loss
+
+    # Check if the maximum number of trades per day is reached
+    current_time = datetime.now()
+    daily_trades = [trade for trade in daily_trades if trade > current_time - timedelta(days=1)]
+    
+    if len(daily_trades) >= MAX_TRADES_PER_DAY:
+        logging.warning(f"Maximum trades per day reached: {MAX_TRADES_PER_DAY}")
+        return
+
+    # Check if the maximum loss threshold is exceeded
+    if total_loss >= MAX_LOSS_THRESHOLD:
+        logging.warning(f"Maximum loss threshold exceeded: {MAX_LOSS_THRESHOLD}")
+        return
 
     trade_data = {
         "symbol": SYMBOL,
@@ -95,12 +115,25 @@ def execute_trade(side, amount):
     response = requests.post(f"{API_BASE_URL}/order", json=trade_data)
     response.raise_for_status()  # Raise an error for bad status
 
-    logging.info(f"Executed {side} trade for {amount} {SYMBOL}. Response: {response.json()}")
+    trade_result = response.json()
+    logging.info(f"Executed {side} trade for {amount} {SYMBOL}. Response: {trade_result}")
 
     # Adjust backoff duration based on response time
     response_time = response.elapsed.total_seconds()
     backoff_duration = min(backoff_duration * (1 + response_time), 60)
     logging.info(f"Adjusted backoff duration to: {backoff_duration} seconds")
+
+    # Track the trade and update counts
+    trade_count += 1
+    daily_trades.append(current_time)
+    
+    # Update total loss based on trade result
+    if 'error' in trade_result:
+        logging.error(f"Trade execution error: {trade_result['error']}")
+    else:
+        trade_loss = trade_result.get('loss', 0)
+        total_loss += trade_loss
+        logging.info(f"Updated total loss: {total_loss}")
 
 # Main function
 if __name__ == "__main__":
