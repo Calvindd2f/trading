@@ -7,7 +7,8 @@ from sklearn.metrics import classification_report, accuracy_score
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.svm import SVC
 from sklearn.model_selection import GridSearchCV
-from typing import Dict
+from typing import Dict, Any
+from functools import lru_cache
 
 # Constants
 BUY_THRESHOLD = 0.05
@@ -31,11 +32,13 @@ def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
     df.dropna(inplace=True)
     return df
 
+@lru_cache(maxsize=None)
 def fetch_historical_data(symbol: str) -> pd.DataFrame:
     # Implement fetching historical data here
+    # Caching the result to improve performance
     pass
 
-def train_models(X: pd.DataFrame, y: pd.Series) -> Dict[str, any]:
+def train_models(X: pd.DataFrame, y: pd.Series) -> Dict[str, Any]:
     models = {
         'RandomForest': RandomForestClassifier(n_estimators=100, random_state=42),
         'GradientBoosting': GradientBoostingClassifier(n_estimators=100, random_state=42),
@@ -54,7 +57,7 @@ def train_models(X: pd.DataFrame, y: pd.Series) -> Dict[str, any]:
 
     return results
 
-def backtest_trading_bot(historical_data: pd.DataFrame):
+def backtest_trading_bot(data: pd.DataFrame):
     # Implement backtesting here
     pass
 
@@ -80,3 +83,6 @@ if __name__ == "__main__":
 
     # Backtest the trading bot using historical data
     backtest_trading_bot(data)
+
+    # Save the trained model
+    joblib.dump(model, 'trained_model.pkl')
