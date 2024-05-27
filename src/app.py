@@ -8,8 +8,7 @@ import pandas as pd
 import random
 import asyncio
 import threading
-from ta import __all__
-from main import websocket_handler
+from ta import add_all_ta_features
 
 app = Flask(__name__)
 
@@ -37,6 +36,7 @@ def index():
 def start_training():
     data = fetch_historical_data_from_db()
     features = ['price_change', 'volume_change', 'ma_10', 'ma_50', 'ma_200', 'ma_diff', 'std_10', 'std_50', 'momentum', 'volatility', 'rsi', 'macd']
+    data = add_all_ta_features(data, open='open', high='high', low='low', close='close', volume='volume')
     final_result = three_pass_training(data, features)
     logging.info(f"Final result after three passes: {final_result}")
     if final_result > 0:
@@ -52,11 +52,7 @@ def start_training():
 
 @app.route('/get_metrics')
 def get_metrics():
-    return jsonify({
-        'total_loss': total_loss,
-        'trade_count': trade_count,
-        'equity_curve': equity_curve
-    })
+    return jsonify(metrics)
 
 @app.route('/get_trades', methods=['GET'])
 def get_trades():
@@ -74,3 +70,4 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     threading.Thread(target=websocket_thread).start()
     app.run(debug=True)
+
