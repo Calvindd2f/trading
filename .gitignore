@@ -1,7 +1,13 @@
+# Dependencies
 venv/
-__pycache__/
+.vscode/
+
+# Bytecode
 *.pyc
 *.pyo
+
+# CSV data file
 data/historical_data.csv
-.vscode/extensions.json
+
+# Third-party library
 talib/
