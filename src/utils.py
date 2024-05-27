@@ -8,7 +8,6 @@ import logging
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-@jit(float64(float64[:]), nopython=True)
 def calculate_max_drawdown(equity_curve):
     peak = equity_curve[0]
     max_drawdown = 0.0
@@ -20,7 +19,6 @@ def calculate_max_drawdown(equity_curve):
             max_drawdown = drawdown
     return max_drawdown
 
-@jit(float64(float64[:], float64), nopython=True)
 def calculate_sharpe_ratio(equity_curve, risk_free_rate=0.01):
     returns = np.diff(equity_curve) / equity_curve[:-1]
     excess_returns = returns - risk_free_rate / 252  # Daily risk-free rate assuming 252 trading days in a year
@@ -47,7 +45,6 @@ def calculate_position_size(account_balance, risk_per_trade):
     return min(position_size, 10000)  # Example: MAX_POSITION_SIZE = 10000
 
 # Function to calculate RSI using Numba
-@lru_cache(maxsize=128)
 def calculate_rsi(series, window=14):
     delta = np.diff(series)
     gain = np.where(delta > 0, delta, 0).sum() / window
@@ -56,7 +53,6 @@ def calculate_rsi(series, window=14):
     rsi = 100 - (100 / (1 + rs))
     return rsi
 
-@jit(float64[::1](float64[::1], int32, int32, int32), nopython=True)
 def calculate_macd(series, slow=26, fast=12, signal=9):
     exp1 = np.zeros_like(series)
     exp2 = np.zeros_like(series)
@@ -72,8 +68,14 @@ def calculate_macd(series, slow=26, fast=12, signal=9):
         signal_line[i] = signal_line[i-1] * (1 - 2 / (signal + 1)) + macd[i] * (2 / (signal + 1))
     return macd - signal_line
 
+def log_performance_metrics(trade_count, total_loss, max_drawdown, sharpe_ratio):
+    logging.info(f"Trade Count: {trade_count}")
+    logging.info(f"Total Loss: {total_loss}")
+    logging.info(f"Max Drawdown: {max_drawdown}")
+    logging.info(f"Sharpe Ratio: {sharpe_ratio}")
+
 def execute_trade(side, amount):
-    global trade_count, total_loss, equity_curve
+    global trade_count, total_loss, equity_curve, historical_data, backoff_duration
 
     try:
         trade_price = historical_data.iloc[-1]['price']
@@ -111,5 +113,4 @@ def execute_trade(side, amount):
     log_performance_metrics(trade_count, total_loss, max_drawdown, sharpe_ratio)
 
     # Adjust backoff logic based on strategy optimization
-    global backoff_duration
     backoff_duration = max(1, backoff_duration * 0.9 if side == 'buy' else backoff_duration * 1.1)
