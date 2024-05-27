@@ -28,10 +28,21 @@ def analyze_performance_metrics(metrics_df: pd.DataFrame):
         metrics_df (pandas.DataFrame): The DataFrame containing the performance metrics.
     """
     # Summary statistics
-    print("Summary Statistics:\n")
-    print(metrics_df.describe())
+    print_summary_statistics(metrics_df)
 
     # Plot performance metrics over time
+    plot_performance_metrics(metrics_df)
+
+    # Print cumulative profit
+    print_cumulative_profit(metrics_df)
+
+
+def print_summary_statistics(metrics_df: pd.DataFrame):
+    print("\nSummary Statistics:\n")
+    print(metrics_df.describe())
+
+
+def plot_performance_metrics(metrics_df: pd.DataFrame):
     plt.figure(figsize=(14, 7))
 
     plt.subplot(2, 2, 1)
@@ -65,7 +76,7 @@ def analyze_performance_metrics(metrics_df: pd.DataFrame):
     plt.tight_layout()
     plt.show()
 
-# Calculate and print cumulative profit
+
 def print_cumulative_profit(metrics_df: pd.DataFrame):
     """
     Calculates and prints the cumulative profit from the performance metrics DataFrame.
@@ -75,12 +86,11 @@ def print_cumulative_profit(metrics_df: pd.DataFrame):
     """
     cumulative_profit_df = metrics_df.copy()
     cumulative_profit_df['cumulative_profit_loss'] = cumulative_profit_df['total_profit_loss'].cumsum()
-    print("\nCumulative Profit:")
+    print("\nCumulative Profit:\n")
     print(cumulative_profit_df[['timestamp', 'cumulative_profit_loss']])
 
-# Main function to analyze and report performance metrics
+
 if __name__ == "__main__":
     metrics_df = fetch_performance_metrics()
     if not metrics_df.empty:
         analyze_performance_metrics(metrics_df)
-        print_cumulative_profit(metrics_df)
