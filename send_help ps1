@@ -54,10 +54,6 @@ function Install-PyPy {
 
     try {
         Write-Host "Downloading PyPy $url"
-        $webClient.DownloadFileAsync($url, $tempPath)
-        $webClient.DownloadFileCompleted += {
-            $global:success = $true
-        }
         $webClient.DownloadFileTaskAsync($url, $tempPath).Wait()
     }
     catch {
@@ -80,7 +76,7 @@ function Install-PyPy {
 
     try {
         Write-Host "Unpackaging PyPy"
-        Expand-Archive -Force -Path $tempPath -DestinationPath $env:TEMP
+        Expand-Archive -Force -Path $tempPath -DestinationPath $env:TEMP -ErrorAction Stop
     }
     catch {
         Write-Warning "Failed to expand archive: $($_.Exception.Message)"
@@ -96,15 +92,46 @@ function Install-PyPy {
         return
     }
 
+    $global:success = $true
     Write-Host "PyPy installed successfully."
 }
 
-function Verify {
+function Test-Connection {
+    $ping = Test-Connection -ComputerName "8.8.8.8" -Count 1 -Quiet -ErrorAction SilentlyContinue
+
+    if (-not $ping) {
+        $errorMessage = "No internet connection detected. Please check your internet connection and try again."
+        Write-Warning $errorMessage
+        return $false
+    }
+
+    return $true
+}
+
+function Test-PyPy {
+    $pypyExe = "$env:TEMP\pypy\pypy3.exe"
+
+    if (-not (Test-Path $pypyExe)) {
+        $errorMessage = "PyPy executable not found. Please make sure PyPy is installed correctly."
+        Write-Warning $errorMessage
+        return $false
+    }
+
+    $pypyVersion = & $pypyExe -V 2>&1
+
+    if ($pypyVersion -notlike "Python 3.10.*") {
+        $errorMessage = "Unexpected PyPy version found. Expected version: 3.10. Got version: $pypyVersion. Please make sure PyPy is installed correctly."
+        Write-Warning $errorMessage
+        return $false
+    }
+
     return $true
 }
 
 $global:count = 0
 
-if ((Verify) -and ($global:success) ) {
+if (Test-Connection -and ((Verify) -and ($global:success) )) {
     Install-PyPy
 }
+
+Test-PyPy
