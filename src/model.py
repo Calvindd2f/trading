@@ -1,20 +1,21 @@
 import logging
 import joblib
 import pandas as pd
-from model_tuning import X_test, X_train, y_test, y_train
 from utils import execute_trade
 from sklearn.model_selection import cross_val_score
 from sklearn.ensemble import VotingClassifier
 from sklearn.metrics import classification_report, accuracy_score, precision_score, recall_score
 from sklearn.linear_model import LogisticRegression
 from ta.momentum import RSIIndicator
-from ta.trend import MACD, SMAIndicator
+from ta.trend import MACD
 from ta.volatility import BollingerBands
 
 
+def load_model(filepath='src/optimized_pump_dump_model.pkl'):
+    return joblib.load(filepath)
 
 # Load preprocessed data
-def load_best_models(file_path='optimized_pump_dump_model.pkl'):
+def load_best_models(file_path='src/optimized_pump_dump_model.pkl'):
     return joblib.load(file_path)
 
 best_models = load_best_models()
