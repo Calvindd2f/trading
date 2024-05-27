@@ -2,17 +2,23 @@ import logging
 import pandas as pd
 from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import GradientBoostingClassifier
+from typing import Dict, List, Tuple
 
-def assess_cryptos(data):
-    # Example function to assess different cryptocurrencies
-    cryptos = data['crypto'].unique()
-    logging.info(f"Assessing the following cryptocurrencies: {', '.join(cryptos)}")
-    # Add your logic to assess and compare different cryptocurrencies
+def optimize_algorithm(data: pd.DataFrame) -> Tuple[Dict[str, int], float]:
+    """Optimize algorithm parameters using GridSearchCV.
 
-def optimize_algorithm(data):
-    # Example function to optimize algorithm parameters
+    Parameters
+    ----------
+    data : pd.DataFrame
+        DataFrame containing features and target
+
+    Returns
+    -------
+    Tuple[Dict[str, int], float]
+        Best parameters and best score
+    """
     logging.info("Optimizing algorithm parameters...")
-    parameters = {
+    parameters: Dict[str, List[int]] = {
         'max_depth': [3, 5, 10],
         'n_estimators': [50, 100, 200],
         'learning_rate': [0.01, 0.1, 1],
@@ -22,6 +28,7 @@ def optimize_algorithm(data):
     grid_search.fit(data.drop('label', axis=1), data['label'])
     logging.info(f"Best parameters: {grid_search.best_params_}")
     logging.info(f"Best score: {grid_search.best_score_}")
+    return grid_search.best_params_, grid_search.best_score_
 
 def load_data(file_path):
     # Load data from a CSV file

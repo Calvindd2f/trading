@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch, MagicMock, call
 import pandas as pd
 from datetime import datetime, timedelta
-from trading_bot import (
+from src.helper.trading_bot import (
     fetch_historical_data,
     process_real_time_data,
     detect_anomalies,

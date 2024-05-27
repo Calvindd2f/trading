@@ -2,14 +2,13 @@ import logging
 import joblib
 import pandas as pd
 from utils import execute_trade
-from sklearn.model_selection import cross_val_score
 from sklearn.ensemble import VotingClassifier
 from sklearn.metrics import classification_report, accuracy_score, precision_score, recall_score
 from sklearn.linear_model import LogisticRegression
 from ta.momentum import RSIIndicator
 from ta.trend import MACD
 from ta.volatility import BollingerBands
-
+from sklearn.model_selection import train_test_split
 
 def load_model(filepath='src/optimized_pump_dump_model.pkl'):
     return joblib.load(filepath, mmap_mode='r')
@@ -26,6 +25,8 @@ ensemble_model = VotingClassifier(estimators=[
     ('gb', best_models['GradientBoosting']),
     ('svm', best_models['SVM'])
 ], voting='soft')
+
+X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=0.2, random_state=42)
 
 def train_ensemble_model(model, X_train, y_train):
     model.fit(X_train, y_train, n_jobs=-1)

@@ -56,7 +56,22 @@ def preprocess_data(data, future_period=1):
     print("Columns after preprocessing: ", data.columns.tolist())  # Debugging statement
     return data
 
-def create_labels(price_series, future_period=1):
+def create_labels(price_series: pd.Series, future_period: int = 1) -> pd.Series:
+    """
+    Create a series of labels from the price series. The labels are 1 if the future price is higher than the current price, and 0 otherwise.
+
+    Parameters
+    ----------
+    price_series : pandas.Series
+        The price series to use for calculating the labels.
+    future_period : int, optional
+        The period in the future to look at the price. Defaults to 1.
+
+    Returns
+    -------
+    pandas.Series
+        A series of labels. The labels are 1 if the future price is higher than the current price, and 0 otherwise.
+    """
     future_price = price_series.shift(-future_period)
     label = (future_price > price_series).astype(int)
     return label
@@ -119,11 +134,25 @@ def select_random_cryptos(data, n=3):
     cryptos = data['crypto'].unique()
     return random.sample(list(cryptos), n)
 
-def three_pass_training(data, features, n_passes=3, n_cryptos=3):
+def three_pass_training(data: pd.DataFrame, features: List[str], n_passes: int = 3, n_cryptos: int = 3) -> Optional[GradientBoostingClassifier]:
+    """
+    Perform three passes of training on the given data.
+
+    Args:
+        data (pandas.DataFrame): The DataFrame containing the data to be used for training.
+        features (list): The names of the features used for training.
+        n_passes (int): The number of passes to perform. Defaults to 3.
+        n_cryptos (int): The number of cryptos to select for each pass. Defaults to 3.
+
+    Returns:
+        Optional[GradientBoostingClassifier]: The best model after three passes, or None if the final result is negative.
+    """
     results = []
     best_model = None
-    for _ in range(n_passes):
-        selected_cryptos = select_random_cryptos(data, n_cryptos)
+    cryptos = data['crypto'].unique()
+    random_cryptos = random.sample(list(cryptos), n_passes*n_cryptos)
+    for i in range(n_passes):
+        selected_cryptos = random_cryptos[i*n_cryptos:(i+1)*n_cryptos]
         logging.info(f"Selected cryptos for this pass: {selected_cryptos}")
         subset = data[data['crypto'].isin(selected_cryptos)]
         processed_data = preprocess_data(subset)
@@ -135,12 +164,12 @@ def three_pass_training(data, features, n_passes=3, n_cryptos=3):
     logging.info(f"Final result after three passes: {final_result}")
     return best_model if final_result > 0 else None
 
-def evaluate_model(model, data, features):
+def evaluate_model(model: GradientBoostingClassifier, data: pd.DataFrame, features: List[str]) -> float:
     """
     Evaluate a trained machine learning model on a given dataset.
 
     Args:
-        model (object): The trained machine learning model.
+        model (GradientBoostingClassifier): The trained machine learning model.
         data (pandas.DataFrame): The dataset to evaluate the model on.
         features (list): The list of features to use for prediction.
 
@@ -167,10 +196,30 @@ def evaluate_model(model, data, features):
     return np.mean((y == y_pred) * 1.0) - np.mean((y != y_pred) * 1.0)
 
 
-def calculate_gain_loss(y_true, y_pred):
+def calculate_gain_loss(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """
+    Calculate the mean gain or loss of the model's predictions compared to the true labels.
+
+    Args:
+        y_true (numpy.ndarray): The true labels.
+        y_pred (numpy.ndarray): The predicted labels.
+
+    Returns:
+        float: The mean gain or loss of the model's predictions compared to the true labels.
+    """
     return np.sum((y_pred == y_true) * 1.0) - np.sum((y_pred != y_true) * 1.0)
 
-def aggregate_results(results):
+@jit
+def aggregate_results(results: List[float]) -> float:
+    """
+    Calculate the mean of a list of results.
+
+    Args:
+        results (list): A list of results to calculate the mean of.
+
+    Returns:
+        float: The mean of the results.
+    """
     return np.mean(results)
 
 if __name__ == "__main__":
