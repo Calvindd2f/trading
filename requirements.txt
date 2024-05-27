@@ -1,9 +1,9 @@
-# Import necessary libraries
-import pandas as pd
-import numpy as np
-import websocket
-from joblib import dump, load
-import numba
+# Import necessary libraries with specified versions
+import pandas as pd  # version 1.2.3
+import numpy as np  # version 1.21.0
+import websocket  # version 1.3.2
+from joblib import dump, load  # version 1.1.0
+import numba  # version 0.53.1
 
 # Optionally, you can specify the version of the packages to ensure consistency
 # pd.__version__ = '1.2.3'
@@ -12,10 +12,22 @@ import numba
 # joblib.__version__ = '1.1.0'
 # numba.__version__ = '0.53.1'
 
-# You can also add any necessary context or comments to your code
-# for better readability and understanding
+# Add comments for better readability and understanding
+# This code demonstrates how to save and load a DataFrame using joblib.
 
 # Example usage:
-# df = pd.DataFrame(np.random.rand(10, 5))
-# dump(df, 'df.joblib')  # Save DataFrame to disk
-# loaded_df = load('df.joblib')  # Load DataFrame from disk
+# First, create a random DataFrame with 10 rows and 5 columns
+np.random.seed(0)  # for reproducibility
+df = pd.DataFrame(np.random.rand(10, 5))
+
+# Save the DataFrame to disk using joblib's dump function
+dump(df, 'df.joblib')
+
+# Load the DataFrame from disk using joblib's load function
+loaded_df = load('df.joblib')
+
+# Print the original and loaded DataFrames to verify that they are identical
+print("Original DataFrame:")
+print(df)
+print("\nLoaded DataFrame:")
+print(loaded_df)
