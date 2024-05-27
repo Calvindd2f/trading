@@ -14,29 +14,22 @@ from sklearn.svm import SVC
 from sklearn.metrics import classification_report, accuracy_score
 from sklearn.preprocessing import MinMaxScaler
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-#from sqlalchemy import create_engine
+from sqlalchemy import create_engine
 
-# Configure logging
 logging.basicConfig(filename='trading_bot.log', level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s')
 
-# Constants
 API_BASE_URL = "https://api.exchange.com"
 WEBSOCKET_URL = "wss://ws.exchange.com/realtime"
 SYMBOL = "BTCUSD"
 TRADE_AMOUNT = 0.01
-
-# Parameters
 MAX_POSITION_SIZE = 10000  # Maximum position size in USD
 STOP_LOSS_PERCENT = 0.05  # 5% stop-loss
-
-# Training parameters
 TRAINING_SPLIT_RATIO = 0.8
 TRAINING_CV_FOLDS = 5
-
-# Database configuration
 DB_URI = "sqlite:///trading_bot.db"
 
-# Define risk management parameters
+scaler = MinMaxScaler()
+
 def calculate_position_size(account_balance, risk_per_trade):
     position_size = account_balance * risk_per_trade
     return min(position_size, MAX_POSITION_SIZE)
@@ -48,7 +41,7 @@ def fetch_data(symbol):
 
 def preprocess_data(data):
     data = calculate_features(data)
-    data = scaler.transform(data)
+    data = scaler.fit_transform(data)
     return data
 
 def calculate_features(data):
