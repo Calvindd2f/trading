@@ -16,20 +16,43 @@ def load_data(filepath):
     return pd.read_csv(filepath)
 
 def preprocess_data(data, future_period=1):
+    assert isinstance(data, pd.DataFrame), "data must be a DataFrame"
+    assert 'price' in data.columns and 'volume' in data.columns, "data must contain columns 'price' and 'volume'"
+    assert isinstance(future_period, int) and future_period > 0, "future_period must be a positive integer"
+
     data['price_change'] = data['price'].pct_change().values
     data['volume_change'] = data['volume'].pct_change().values
-    data['ma_10'] = talib.SMA(data['price'], timeperiod=10)
-    data['ma_50'] = talib.SMA(data['price'], timeperiod=50)
-    data['ma_200'] = talib.SMA(data['price'], timeperiod=200)
+
+    # Calculate the moving averages
+    data['ma_10'] = data['price'].rolling(window=10).mean().values
+    data['ma_50'] = data['price'].rolling(window=50).mean().values
+    data['ma_200'] = data['price'].rolling(window=200).mean().values
+
+    # Calculate the difference between the short and long moving averages
     data['ma_diff'] = data['ma_10'] - data['ma_50']
+
+    # Calculate the standard deviation over different time periods
     data['std_10'] = data['price'].rolling(window=10).std().values
     data['std_50'] = data['price'].rolling(window=50).std().values
-    data['momentum'] = talib.MOM(data['price'], timeperiod=4)
-    data['volatility'] = data['price'].rolling(window=20).std() / data['price'].rolling(window=20).mean()
+
+    # Calculate the momentum
+    data['momentum'] = data['price'].rolling(window=4).mean().values
+
+    # Calculate the volatility
+    data['volatility'] = data['price'].rolling(window=20).std().values / data['price'].rolling(window=20).mean().values
+
+    # Calculate the Relative Strength Index
     data['rsi'] = talib.RSI(data['price'], timeperiod=14)
+
+    # Calculate the Moving Average Convergence Divergence
     data['macd'], macdsignal, macdhist = talib.MACD(data['price'], fastperiod=12, slowperiod=26, signalperiod=9)
+
+    # Create the label column
     data['label'] = create_labels(data['price'], future_period)
+
+    # Drop any rows with missing values
     data.dropna(inplace=True)
+
     print("Columns after preprocessing: ", data.columns.tolist())  # Debugging statement
     return data
 
@@ -39,7 +62,21 @@ def create_labels(price_series, future_period=1):
     return label
 
 def train_model(data, features):
-    print("Features available in DataFrame: ", data.columns.tolist())  # Debugging statement
+    """
+    Train and evaluate several models using the provided DataFrame and features.
+
+    Parameters
+    ----------
+    data : pandas.DataFrame
+        The DataFrame containing the data to be used for training.
+    features : list
+        The names of the features used for training.
+
+    Returns
+    -------
+    dict
+        A dictionary containing the best models for each model type.
+    """
     X = data[features]
     y = data['label']
 
@@ -51,16 +88,16 @@ def train_model(data, features):
     }
 
     param_grids = {
-        'GradientBoosting': {
-            'n_estimators': [100, 200, 300],
-            'learning_rate': [0.01, 0.1, 0.2],
-            'max_depth': [3, 5, 7],
-            'subsample': [0.8, 1.0]
-        },
-        'SVM': {
-            'C': [0.1, 1, 10],
-            'gamma': [0.001, 0.01, 0.1]
-        }
+        'GradientBoosting': [
+            {'n_estimators': [100], 'learning_rate': [0.1], 'max_depth': [3], 'subsample': [0.8]},
+            {'n_estimators': [200], 'learning_rate': [0.1], 'max_depth': [5], 'subsample': [0.8]},
+            {'n_estimators': [300], 'learning_rate': [0.1], 'max_depth': [7], 'subsample': [1.0]}
+        ],
+        'SVM': [
+            {'C': [0.1], 'gamma': [0.001]},
+            {'C': [1], 'gamma': [0.01]},
+            {'C': [10], 'gamma': [0.1]}
+        ]
     }
 
     best_models = {}
@@ -72,6 +109,7 @@ def train_model(data, features):
         logging.info(f"Best parameters for {model_name}: {grid_search.best_params_}")
 
     return best_models
+
 
 def save_model(model, filepath):
     joblib.dump(model, filepath)
@@ -98,11 +136,36 @@ def three_pass_training(data, features, n_passes=3, n_cryptos=3):
     return best_model if final_result > 0 else None
 
 def evaluate_model(model, data, features):
-    X = data[features]
-    y = data['label']
+    """
+    Evaluate a trained machine learning model on a given dataset.
+
+    Args:
+        model (object): The trained machine learning model.
+        data (pandas.DataFrame): The dataset to evaluate the model on.
+        features (list): The list of features to use for prediction.
+
+    Returns:
+        float: The mean gain or loss of the model's predictions compared to the true labels.
+    """
+    if model is None:
+        raise ValueError("Model cannot be None")
+    if data is None:
+        raise ValueError("Data cannot be None")
+    if features is None:
+        raise ValueError("Features cannot be None")
+
+    X = data[features].values
+    y = data['label'].values
+
+    if X is None or y is None or len(X) != len(y):
+        raise ValueError("X and y must have the same length")
+
     y_pred = model.predict(X)
-    gain_loss = calculate_gain_loss(y, y_pred)
-    return gain_loss
+    if y_pred is None:
+        raise ValueError("Model did not return a prediction")
+
+    return np.mean((y == y_pred) * 1.0) - np.mean((y != y_pred) * 1.0)
+
 
 def calculate_gain_loss(y_true, y_pred):
     return np.sum((y_pred == y_true) * 1.0) - np.sum((y_pred != y_true) * 1.0)

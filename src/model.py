@@ -12,7 +12,7 @@ from ta.volatility import BollingerBands
 
 
 def load_model(filepath='src/optimized_pump_dump_model.pkl'):
-    return joblib.load(filepath)
+    return joblib.load(filepath, mmap_mode='r')
 
 # Load preprocessed data
 def load_best_models(file_path='src/optimized_pump_dump_model.pkl'):
@@ -28,7 +28,7 @@ ensemble_model = VotingClassifier(estimators=[
 ], voting='soft')
 
 def train_ensemble_model(model, X_train, y_train):
-    model.fit(X_train, y_train)
+    model.fit(X_train, y_train, n_jobs=-1)
     return model
 
 ensemble_model = train_ensemble_model(ensemble_model, X_train, y_train)
