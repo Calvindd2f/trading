@@ -1,7 +1,7 @@
-# Define global variables and constants
+# Constants
 $cryptoId = "maga-hat"
 $vsCurrency = "eur"
-$days = 2
+$timeSpanDays = 2
 $tempJsonFile = "data/historical_data.json"
 
 # Function to send API requests with retry and pagination
@@ -9,7 +9,7 @@ function Send-ApiRequest {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [string]$Url,
+        [string]$url,
 
         [Parameter(Mandatory=$false)]
         [int]$retryCount = 5,
@@ -27,7 +27,7 @@ function Send-ApiRequest {
 
     while ($attempt -lt $retryCount -and -not $success) {
         try {
-            $response = Invoke-RestMethod -Uri $Url -Method Get -TimeoutSec 10
+            $response = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 10
             $success = $true
         } catch {
             Write-Host "ERROR: $($_.Exception.Message)"
@@ -74,7 +74,7 @@ function Save-RawJson {
 function Execute() {
     # Main script execution
     try {
-        $url = "https://api.coingecko.com/api/v3/coins/$cryptoId/market_chart?vs_currency=$vsCurrency&days=$days"
+        $url = "https://api.coingecko.com/api/v3/coins/$cryptoId/market_chart?vs_currency=$vsCurrency&days=$timeSpanDays"
         $apiResponse = Send-ApiRequest -Url $url
         Save-RawJson -ApiResponse $apiResponse -OutputFile $tempJsonFile
     } catch {
