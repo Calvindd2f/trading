@@ -105,6 +105,6 @@ function Verify {
 
 $global:count = 0
 
-if (Verify) {
+if ((Verify) -and ($global:success) ) {
     Install-PyPy
 }

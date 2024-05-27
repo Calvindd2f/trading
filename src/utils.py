@@ -72,8 +72,14 @@ def calculate_macd(series, slow=26, fast=12, signal=9):
         signal_line[i] = signal_line[i-1] * (1 - 2 / (signal + 1)) + macd[i] * (2 / (signal + 1))
     return macd - signal_line
 
+def log_performance_metrics(trade_count, total_loss, max_drawdown, sharpe_ratio):
+    logging.info(f"Trade Count: {trade_count}")
+    logging.info(f"Total Loss: {total_loss}")
+    logging.info(f"Max Drawdown: {max_drawdown}")
+    logging.info(f"Sharpe Ratio: {sharpe_ratio}")
+
 def execute_trade(side, amount):
-    global trade_count, total_loss, equity_curve
+    global trade_count, total_loss, equity_curve, historical_data, backoff_duration
 
     try:
         trade_price = historical_data.iloc[-1]['price']
@@ -111,5 +117,4 @@ def execute_trade(side, amount):
     log_performance_metrics(trade_count, total_loss, max_drawdown, sharpe_ratio)
 
     # Adjust backoff logic based on strategy optimization
-    global backoff_duration
     backoff_duration = max(1, backoff_duration * 0.9 if side == 'buy' else backoff_duration * 1.1)

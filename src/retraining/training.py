@@ -6,6 +6,11 @@ from sklearn.svm import SVC
 import joblib
 import logging
 import random
+from ta import add_all_ta_features as talib
+from model_tuning import y_train, X_train, X_test, y_test
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
 def load_data(filepath):
     return pd.read_csv(filepath)
@@ -13,34 +18,20 @@ def load_data(filepath):
 def preprocess_data(data, future_period=1):
     data['price_change'] = data['price'].pct_change().values
     data['volume_change'] = data['volume'].pct_change().values
-    data['ma_10'] = data['price'].rolling(window=10).mean().values
-    data['ma_50'] = data['price'].rolling(window=50).mean().values
-    data['ma_200'] = data['price'].rolling(window=200).mean().values
+    data['ma_10'] = talib.SMA(data['price'], timeperiod=10)
+    data['ma_50'] = talib.SMA(data['price'], timeperiod=50)
+    data['ma_200'] = talib.SMA(data['price'], timeperiod=200)
     data['ma_diff'] = data['ma_10'] - data['ma_50']
     data['std_10'] = data['price'].rolling(window=10).std().values
     data['std_50'] = data['price'].rolling(window=50).std().values
-    data['momentum'] = data['price'] - data['price'].shift(4)
+    data['momentum'] = talib.MOM(data['price'], timeperiod=4)
     data['volatility'] = data['price'].rolling(window=20).std() / data['price'].rolling(window=20).mean()
-    data['rsi'] = calculate_rsi(data['price'])
-    data['macd'] = calculate_macd(data['price'])
+    data['rsi'] = talib.RSI(data['price'], timeperiod=14)
+    data['macd'], macdsignal, macdhist = talib.MACD(data['price'], fastperiod=12, slowperiod=26, signalperiod=9)
     data['label'] = create_labels(data['price'], future_period)
     data.dropna(inplace=True)
+    print("Columns after preprocessing: ", data.columns.tolist())  # Debugging statement
     return data
-
-def calculate_rsi(series, window=14):
-    delta = series.diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
-    rs = gain / loss
-    rsi = 100 - (100 / (1 + rs))
-    return rsi
-
-def calculate_macd(series, slow=26, fast=12, signal=9):
-    exp1 = series.ewm(span=fast, adjust=False).mean()
-    exp2 = series.ewm(span=slow, adjust=False).mean()
-    macd = exp1 - exp2
-    signal_line = macd.ewm(span=signal, adjust=False).mean()
-    return macd - signal_line
 
 def create_labels(price_series, future_period=1):
     future_price = price_series.shift(-future_period)
@@ -48,6 +39,7 @@ def create_labels(price_series, future_period=1):
     return label
 
 def train_model(data, features):
+    print("Features available in DataFrame: ", data.columns.tolist())  # Debugging statement
     X = data[features]
     y = data['label']
 
@@ -91,6 +83,7 @@ def select_random_cryptos(data, n=3):
 
 def three_pass_training(data, features, n_passes=3, n_cryptos=3):
     results = []
+    best_model = None
     for _ in range(n_passes):
         selected_cryptos = select_random_cryptos(data, n_cryptos)
         logging.info(f"Selected cryptos for this pass: {selected_cryptos}")
@@ -100,7 +93,9 @@ def three_pass_training(data, features, n_passes=3, n_cryptos=3):
         best_model = best_models['GradientBoosting']  # or select based on performance
         results.append(evaluate_model(best_model, processed_data, features))
 
-    return aggregate_results(results)
+    final_result = aggregate_results(results)
+    logging.info(f"Final result after three passes: {final_result}")
+    return best_model if final_result > 0 else None
 
 def evaluate_model(model, data, features):
     X = data[features]
@@ -110,7 +105,6 @@ def evaluate_model(model, data, features):
     return gain_loss
 
 def calculate_gain_loss(y_true, y_pred):
-    # Simplified example to calculate gain/loss
     return np.sum((y_pred == y_true) * 1.0) - np.sum((y_pred != y_true) * 1.0)
 
 def aggregate_results(results):
@@ -119,10 +113,8 @@ def aggregate_results(results):
 if __name__ == "__main__":
     data = load_data('data/historical_data.csv')
     features = ['price_change', 'volume_change', 'ma_10', 'ma_50', 'ma_200', 'ma_diff', 'std_10', 'std_50', 'momentum', 'volatility', 'rsi', 'macd']
-    final_result = three_pass_training(data, features)
-    logging.info(f"Final result after three passes: {final_result}")
-    if (final_result > 0).all():  # Ensure all passes are successful
-        best_model = train_model(data, features)['GradientBoosting']
+    best_model = three_pass_training(data, features)
+    if best_model:
         save_model(best_model, 'src/optimized_pump_dump_model.pkl')
     else:
         logging.warning("Training failed to achieve positive gain/loss. Model not updated.")

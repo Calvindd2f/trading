@@ -4,3 +4,4 @@ __pycache__/
 *.pyo
 data/historical_data.csv
 .vscode/extensions.json
+talib/

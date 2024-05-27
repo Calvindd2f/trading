@@ -1,20 +1,21 @@
 import os
 from flask import Flask, render_template, jsonify, request, Response
 from data_processing import fetch_historical_data_from_db
-from retraining.training import three_pass_training, preprocess_data, train_model, save_model
-from model import load_model
+from retraining.training import three_pass_training, train_model, save_model
+from model import load_model, preprocess_data
 import logging
 import pandas as pd
 import random
 import asyncio
 import threading
-
-from src.main import websocket_handler
+from ta import __all__
+from main import websocket_handler
 
 app = Flask(__name__)
 
 # Initialize global variables for metrics
 metrics = {'total_loss': 0, 'trade_count': 0, 'equity_curve': []}
+loss_threshold = -1000  # Example loss threshold
 
 # Path to the model file
 model_path = 'src/optimized_pump_dump_model.pkl'
@@ -51,7 +52,11 @@ def start_training():
 
 @app.route('/get_metrics')
 def get_metrics():
-    return jsonify(metrics)
+    return jsonify({
+        'total_loss': total_loss,
+        'trade_count': trade_count,
+        'equity_curve': equity_curve
+    })
 
 @app.route('/get_trades', methods=['GET'])
 def get_trades():

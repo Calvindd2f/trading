@@ -9,6 +9,7 @@ from data_processing import fetch_historical_data_from_db, process_real_time_dat
 from model import load_model, predict_anomaly
 from utils import log_performance_metrics, execute_trade
 from retraining.training import train_model, save_model, three_pass_training, preprocess_data
+import model_tuning
 
 # Configure asynchronous logger
 logger = Logger.with_default_handlers(name='trading_bot_logger')
@@ -32,15 +33,22 @@ async def fetch_data(url):
             return await response.json()
 
 async def process_real_time_data_async(data):
-    global historical_data, total_loss
+    global historical_data, total_loss, trade_count
 
     timestamp = datetime.fromisoformat(data['time'].replace("Z", ""))
     price = float(data['price'])
     volume = float(data['volume'])
     new_row = pd.DataFrame([[timestamp, price, volume]], columns=['time', 'price', 'volume'])
     historical_data = pd.concat([historical_data, new_row]).reset_index(drop=True)
-    
-    predict_anomaly()
+
+    predictions = predict_anomaly(model, historical_data, TRADE_AMOUNT=1000)
+
+    # Log the predictions for debugging purposes
+    logger.info(f"Predictions: {predictions}")
+
+    # Execute trade if an anomaly is detected
+    if predictions is not None and predictions[-1] == 1:
+        execute_trade('buy', 1000)  # Example trade side 'buy', amount 1000
 
     # Check if losses exceed threshold
     if total_loss <= loss_threshold:
