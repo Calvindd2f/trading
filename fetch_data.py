@@ -1,9 +1,9 @@
 import asyncio
 import subprocess
 import json
+import os
 import pandas as pd
 import numpy as np
-import os
 
 # Function to call PowerShell script asynchronously
 async def call_powershell_script(ps_script_path):
@@ -32,8 +32,7 @@ async def main():
 
     # Ensure the output directory exists
     output_dir = "data"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
 
     # Call the PowerShell script asynchronously
     await call_powershell_script(ps_script_path)
@@ -57,7 +56,8 @@ async def main():
                 raise ValueError(f"Error decoding JSON: {e}") from e
 
         # Check if the required keys are in the response
-        if 'prices' not in data or 'total_volumes' not in data:
+        required_keys = ['prices', 'total_volumes']
+        if not all(key in data for key in required_keys):
             raise KeyError("Expected keys not found in the API response")
 
         prices = data['prices']

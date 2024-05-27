@@ -1,11 +1,23 @@
-Function Verify()
-{
-    # This only returns true for now but this script executes based off this function returning true
-    return $true;
+function Get-PyPyVersion {
+    [CmdletBinding()]
+    param()
+
+    $pypyVersion = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
+
+    if ($pypyVersion -eq "x64") {
+        return "64"
+    }
+
+    return "32"
 }
 
-Function Unfuck($retryCount = 5)
-{
+function Install-PyPy {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param(
+        [Parameter(Mandatory = $false)]
+        [int]$retryCount = 5
+    )
+
     <#
     .SYNOPSIS
         Downloads and installs PyPy based on the system architecture and Python version.
@@ -27,69 +39,72 @@ Function Unfuck($retryCount = 5)
             - Execute access to the "unzip" command.
     #>
 
-    $success = $false
-    $count = 0
-
-    $pypyVersion = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
-    if($pypyVersion -eq "x64")
-    {
-        $pypyVersion = "64"
-    }
-    else
-    {
-        $pypyVersion = "32"
+    if ($retryCount -lt 0) {
+        Write-Warning "Retry count cannot be less than zero."
+        return
     }
 
-    $url = $null
-    $pythonVersion = $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture -eq "x64" ? (Get-Command -Name python3).VersionInfo.FileVersion : "3.11")
-    if($pythonVersion -ge "3.11"){
-        $url = "https://downloads.python.org/pypy/pypy3.10-v7.3.16-win$($pypyVersion).zip"
-    }
-    else
-    {
-        $url = "https://downloads.python.org/pypy/pypy3.10-v7.3.16-win$($pypyVersion).zip"
-    }
+    $pypyVersion = Get-PyPyVersion
+    $url = "https://downloads.python.org/pypy/pypy3.10-v7.3.16-win$pypyVersion.zip"
 
-    do
-    {
-        try
-        {
-            Write-Host "Downloading PyPy $url"
-            $webClient = New-Object System.Net.WebClient
-            $webClient.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-AU) WindowsPowerShell/5.1.19041.1682")
-            $webClient.DownloadFileAsync($url, "C:\temp\pypy.zip")
-            $webClient.DownloadFileCompleted += 
-            {
-                [string]$success = $true
-                $count = $retry
-            }
-            $webClient.DownloadFileTaskAsync($url, "C:\temp\pypy.zip").Wait()
-        } 
-        catch 
-        {
-            if($($_.Exception.Message) -like "*timed out*" -or $($_.Exception.Message) -like "*Unable to connect to the remote server*")
-            {
-                $count++
-                Write-Warning "TIMEOUT: Will retry in 10 seconds."
-                Start-Sleep -seconds 10
-                if($count -gt $retry)
-                {
-                    throw "Timeout retry limit reached"
-                }
-            }
-            else
-            {
-                Write-Warning "Failed to execute Exchange command: $commandFriendly"
-                Write-Warning $($_.Exception.Message)
-                throw;
-            }
+    $webClient = New-Object System.Net.WebClient
+    $webClient.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-AU) WindowsPowerShell/5.1.19041.1682")
+
+    $tempPath = Join-Path -Path $env:TEMP -ChildPath "pypy.zip"
+
+    try {
+        Write-Host "Downloading PyPy $url"
+        $webClient.DownloadFileAsync($url, $tempPath)
+        $webClient.DownloadFileCompleted += {
+            $global:success = $true
         }
-    } 
-    while($count -lt $retry -or $success -eq $false)
-    Write-Host "Unpackaging PyPy"
-    Expand-Archive -Force -Path "C:\temp\pypy.zip" -DestinationPath "C:\temp\pypy"
-    Write-Host "Adding PyPy to PATH"
-    $env:PATH += ";C:\temp\pypy"
+        $webClient.DownloadFileTaskAsync($url, $tempPath).Wait()
+    }
+    catch {
+        if ($_.Exception.Message -like "*timed out*" -or $_.Exception.Message -like "*Unable to connect to the remote server*") {
+            Write-Warning "TIMEOUT: Will retry in 10 seconds."
+            if ($global:count -gt $retryCount) {
+                throw "Timeout retry limit reached"
+            }
+            $global:count++
+            Start-Sleep -Seconds 10
+            Install-PyPy -retryCount $retryCount
+            return
+        }
+        else {
+            Write-Warning "Failed to execute Exchange command: $commandFriendly"
+            Write-Warning $_.Exception.Message
+            throw
+        }
+    }
+
+    try {
+        Write-Host "Unpackaging PyPy"
+        Expand-Archive -Force -Path $tempPath -DestinationPath $env:TEMP
+    }
+    catch {
+        Write-Warning "Failed to expand archive: $($_.Exception.Message)"
+        return
+    }
+
+    try {
+        Write-Host "Adding PyPy to PATH"
+        $env:PATH += ";$($env:TEMP)\pypy"
+    }
+    catch {
+        Write-Warning "Failed to add PyPy to PATH: $($_.Exception.Message)"
+        return
+    }
+
+    Write-Host "PyPy installed successfully."
 }
 
-if(Verify){Unfuck}
+function Verify {
+    return $true
+}
+
+$global:count = 0
+
+if ((Verify) -and ($global:success) ) {
+    Install-PyPy
+}

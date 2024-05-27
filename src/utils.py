@@ -1,9 +1,12 @@
 import sqlite3
 import numpy as np
 from datetime import datetime
-from numba import jit
+from numba import jit, float64, int32, boolean
 from functools import lru_cache
+import logging
 
+# Set up logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 @jit(float64[:])
 def calculate_max_drawdown(equity):
@@ -45,12 +48,16 @@ def calculate_sharpe_ratio(equity_curve, risk_free_rate=0.01):
     return np.sqrt(252) * mean / std
 
 def log_performance_metrics(total_trades, total_profit_loss, max_drawdown, sharpe_ratio):
-    conn = sqlite3.connect('trading_bot.db')
-    cursor = conn.cursor()
-    cursor.execute('''INSERT INTO performance_metrics (timestamp, total_trades, total_profit_loss, max_drawdown, sharpe_ratio) VALUES (?, ?, ?, ?, ?)''',
-                   (datetime.now().isoformat(), total_trades, total_profit_loss, max_drawdown, sharpe_ratio))
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect('trading_bot.db')
+        cursor = conn.cursor()
+        cursor.execute('''INSERT INTO performance_metrics (timestamp, total_trades, total_profit_loss, max_drawdown, sharpe_ratio) VALUES (?, ?, ?, ?, ?)''',
+                       (datetime.now().isoformat(), total_trades, total_profit_loss, max_drawdown, sharpe_ratio))
+        conn.commit()
+    except sqlite3.Error as e:
+        logging.error(f"Error while logging performance metrics: {e}")
+    finally:
+        conn.close()
 
 @lru_cache(maxsize=None)
 @jit(float64, float64, float64, int32)
@@ -87,8 +94,7 @@ def calculate_rsi(prices: np.ndarray, window: int = 14) -> np.ndarray:
     rsi = 100.0 - (100.0 / (1.0 + rs))
 
     return rsi
-# Function to calculate MACD using Numba
-@jit(nopython=True)
+
 def calculate_macd(series, slow=26, fast=12, signal=9):
     """
     Calculate the Moving Average Convergence Divergence (MACD) for a given array of prices.
@@ -129,7 +135,6 @@ def execute_trade(side, amount):
         logging.error("Error while fetching historical data.")
         return
 
-    trade_price = historical_data.iloc[-1]['price']
     position_size = calculate_position_size(10000, 0.01)  # Example: 1% risk per trade
     trade_amount = position_size / trade_price
 
@@ -160,5 +165,4 @@ def execute_trade(side, amount):
     log_performance_metrics(trade_count, total_loss, max_drawdown, sharpe_ratio)
 
     # Adjust backoff logic based on strategy optimization
-    global backoff_duration
     backoff_duration = max(1, backoff_duration * 0.9 if side == 'buy' else backoff_duration * 1.1)
