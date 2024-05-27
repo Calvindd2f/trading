@@ -11,26 +11,30 @@ from utils import log_performance_metrics, execute_trade
 from retraining.training import train_model, save_model, three_pass_training, preprocess_data
 import model_tuning
 
-# Configure asynchronous logger
-logger = Logger.with_default_handlers(name='trading_bot_logger')
+async def initialize_globals():
+    global total_loss, trade_count, backoff_duration, equity_curve, loss_threshold, model
 
-# Initialize global variables for performance metrics
-total_loss = 0
-trade_count = 0
-backoff_duration = 1  # Example initial backoff duration
-equity_curve = []
-loss_threshold = -1000  # Example loss threshold
+    total_loss = 0
+    trade_count = 0
+    backoff_duration = 1
+    equity_curve = []
+    loss_threshold = -1000
 
-# Load model
-model = load_model()
+    model = load_model()
 
-# Fetch historical data
-historical_data = fetch_historical_data_from_db()
+def configure_logger():
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger('trading_bot_logger')
+    return Logger.with_default_handlers(name=logger.name)
 
 async def fetch_data(url):
     async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            return await response.json()
+        try:
+            async with session.get(url) as response:
+                return await response.json()
+        except aiohttp.ClientError as e:
+            print(f"Error fetching data from {url}: {e}")
+            return None
 
 async def process_real_time_data_async(data):
     global historical_data, total_loss, trade_count
@@ -43,29 +47,38 @@ async def process_real_time_data_async(data):
 
     predictions = predict_anomaly(model, historical_data, TRADE_AMOUNT=1000)
 
-    # Log the predictions for debugging purposes
-    logger.info(f"Predictions: {predictions}")
+    if predictions is not None:
+        last_prediction = predictions[-1]
 
-    # Execute trade if an anomaly is detected
-    if predictions is not None and predictions[-1] == 1:
-        execute_trade('buy', 1000)  # Example trade side 'buy', amount 1000
+        # Log the predictions for debugging purposes
+        logger.info(f"Predictions: {predictions}")
 
-    # Check if losses exceed threshold
-    if total_loss <= loss_threshold:
-        await cease_live_executions()
+        # Execute trade if an anomaly is detected
+        if last_prediction == 1:
+            try:
+                execute_trade('buy', 1000)  # Example trade side 'buy', amount 1000
+            except Exception as e:
+                print(f"Error executing trade: {e}")
+
+        # Check if losses exceed threshold
+        if total_loss <= loss_threshold:
+            await cease_live_executions()
 
 async def on_message(message):
     data = json.loads(message)
     await process_real_time_data_async(data)
 
-async def websocket_handler():
+async def websocket_handler(url):
     async with aiohttp.ClientSession() as session:
-        async with session.ws_connect('wss://example.com/realtime') as ws:
-            async for msg in ws:
-                if msg.type == aiohttp.WSMsgType.TEXT:
-                    await on_message(msg.data)
-                elif msg.type == aiohttp.WSMsgType.ERROR:
-                    break
+        try:
+            async with session.ws_connect(url, timeout=10) as ws:
+                async for msg in ws:
+                    if msg.type == aiohttp.WSMsgType.TEXT:
+                        await on_message(msg.data)
+                    elif msg.type == aiohttp.WSMsgType.ERROR:
+                        break
+        except aiohttp.ClientError as e:
+            print(f"Error connecting to websocket: {e}")
 
 async def cease_live_executions():
     logger.warning("Ceasing live executions due to excessive losses.")
@@ -80,13 +93,19 @@ async def retrain_model():
     logger.info(f"Final result after three passes: {final_result}")
     if final_result > 0:
         best_model = train_model(data, features)['GradientBoosting']
-        save_model(best_model, 'src/optimized_pump_dump_model.pkl')
-        global model
-        model = load_model('src/optimized_pump_dump_model.pkl')
-        logger.info("Retraining completed and model updated.")
+        if 'GradientBoosting' in best_model:
+            save_model(best_model, 'src/optimized_pump_dump_model.pkl')
+            global model
+            model = load_model('src/optimized_pump_dump_model.pkl')
+            logger.info("Retraining completed and model updated.")
+        else:
+            logger.warning("Training failed to achieve positive gain/loss. Model not updated.")
     else:
         logger.warning("Training failed to achieve positive gain/loss. Model not updated.")
 
 if __name__ == '__main__':
+    logger = configure_logger()
+    historical_data = fetch_historical_data_from_db()
+    initialize_globals()
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(websocket_handler())
+    loop.run_until_complete(websocket_handler('wss://example.com/realtime'))
