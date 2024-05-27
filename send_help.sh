@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # Verify function checks if the script should execute or not.
 function Verify() {
     # Check if the script is being run with sufficient permissions
     if [[ $(id -u) -ne 0 ]]; then
         echo "ERROR: This script must be run as root."
-        return 1
+        exit 1
     fi
 
     # Check if the required tools are installed
-    if ! command -v wget &> /dev/null || ! command -v unzip &> /dev/null; then
-        echo "ERROR: wget and unzip are required to run this script."
-        return 1
+    if ! command -v wget &> /dev/null || ! command -v unzip &> /dev/null || ! command -v python3 &> /dev/null; then
+        echo "ERROR: wget, unzip, and python3 are required to run this script."
+        exit 1
     fi
-
-    return 0
 }
 
 # Unfuck function downloads and installs PyPy based on the system architecture and Python version.
@@ -40,6 +40,8 @@ function Unfuck() {
     else
         URL="https://downloads.python.org/pypy/pypy${PYPY_VERSION}-win32.zip"
     fi
+
+    trap 'echo "Interrupted, exiting..."; exit 1' INT
 
     while [[ $COUNT -lt $MAX_RETRY && "$URL" != "" ]]; do
         if [[ $COUNT -gt 0 ]]; then
