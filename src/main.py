@@ -5,9 +5,9 @@ from datetime import datetime
 import asyncio
 import aiohttp
 from aiologger import Logger
-from data_processing import fetch_historical_data_from_db
-from model import execute_trade, load_model, predict_anomaly
-from retraining.training import train_model, save_model, three_pass_training
+from src.data_processing import fetch_historical_data_from_db
+from src.model import execute_trade, load_model, predict_anomaly
+from src.retraining.training import train_model, save_model, three_pass_training
 
 # Configure asynchronous logger
 logger = Logger.with_default_handlers(name='trading_bot_logger')
@@ -21,7 +21,7 @@ loss_threshold = -1000  # Example loss threshold
 
 filename = 'data/historical_data_20240527_015231.csv'
 # Load model
-model = load(filename)
+model = load_model(filename)
 
 # Fetch historical data
 historical_data = fetch_historical_data_from_db()
@@ -43,7 +43,7 @@ async def process_real_time_data_async(data):
     predictions = predict_anomaly(model, historical_data, TRADE_AMOUNT=1000)
 
     # Log the predictions for debugging purposes
-    logger.info(f"Predictions: {predictions}")
+    await logger.info(f"Predictions: {predictions}")
 
     # Execute trade if an anomaly is detected
     if predictions is not None and predictions[-1] == 1:
@@ -54,7 +54,7 @@ async def process_real_time_data_async(data):
         await cease_live_executions()
 
 async def on_message(message):
-    data = ujson.loads(message)
+    data = json.loads(message)
     await process_real_time_data_async(data)
 
 async def websocket_handler():
@@ -65,9 +65,8 @@ async def websocket_handler():
                     await on_message(msg.data)
 
 async def cease_live_executions():
-    logger.warning("Ceasing live executions due to excessive losses.")
+    await logger.warning("Ceasing live executions due to excessive losses.")
     # Implement logic to cease live executions, such as closing positions and stopping the bot
-    
     await retrain_model()
 
 async def retrain_model():
@@ -87,15 +86,17 @@ async def retrain_model():
             'rsi',
             'macd',
         ]
-        final_result = await three_pass_training(data, features)
+        final_result = three_pass_training(data, features)
         if final_result > 0:
-            best_model = await train_model(data, features)
-            await save_model(best_model, 'src/optimized_model.pkl')
+            best_model = train_model(data, features)
+            save_model(best_model, 'src/optimized_model.pkl')
             global model
-            model = await load_model('src/optimized_model.pkl')
+            model = load_model('src/optimized_model.pkl')
     except Exception as e:
-        logger.error(f"Retraining model failed with exception: {e}")
+        await logger.error(f"Retraining model failed with exception: {e}")
 
 async def main():
-    if __name__ == '__main__':
-        await websocket_handler()
+    await websocket_handler()
+
+if __name__ == '__main__':
+    asyncio.run(main())

@@ -7,7 +7,8 @@ import joblib
 import logging
 import random
 from ta import add_all_ta_features as talib
-from model_tuning import y_train, X_train, X_test, y_test
+from typing import List, Optional
+from numba import jit
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -125,7 +126,6 @@ def train_model(data, features):
 
     return best_models
 
-
 def save_model(model, filepath):
     joblib.dump(model, filepath)
     logging.info(f"Model saved to {filepath}")
@@ -150,9 +150,9 @@ def three_pass_training(data: pd.DataFrame, features: List[str], n_passes: int =
     results = []
     best_model = None
     cryptos = data['crypto'].unique()
-    random_cryptos = random.sample(list(cryptos), n_passes*n_cryptos)
+    random_cryptos = random.sample(list(cryptos), n_passes * n_cryptos)
     for i in range(n_passes):
-        selected_cryptos = random_cryptos[i*n_cryptos:(i+1)*n_cryptos]
+        selected_cryptos = random_cryptos[i * n_cryptos:(i + 1) * n_cryptos]
         logging.info(f"Selected cryptos for this pass: {selected_cryptos}")
         subset = data[data['crypto'].isin(selected_cryptos)]
         processed_data = preprocess_data(subset)
@@ -194,7 +194,6 @@ def evaluate_model(model: GradientBoostingClassifier, data: pd.DataFrame, featur
         raise ValueError("Model did not return a prediction")
 
     return np.mean((y == y_pred) * 1.0) - np.mean((y != y_pred) * 1.0)
-
 
 def calculate_gain_loss(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """

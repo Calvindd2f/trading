@@ -1,15 +1,14 @@
 import os
 from flask import Flask, render_template, jsonify, request, Response
-from data_processing import fetch_historical_data_from_db
-from retraining.training import three_pass_training, train_model, save_model
-from model import load_model, preprocess_data
+from src.data_processing import fetch_historical_data_from_db
+from src.retraining.training import three_pass_training, train_model, save_model
+from src.model import load_model, preprocess_data
 import logging
 import pandas as pd
 import random
 import asyncio
 import threading
-from ta import __all__
-from main import websocket_handler
+from src.main import websocket_handler
 
 app = Flask(__name__)
 
@@ -53,9 +52,9 @@ def start_training():
 @app.route('/get_metrics')
 def get_metrics():
     return jsonify({
-        'total_loss': total_loss,
-        'trade_count': trade_count,
-        'equity_curve': equity_curve
+        'total_loss': metrics['total_loss'],
+        'trade_count': metrics['trade_count'],
+        'equity_curve': metrics['equity_curve']
     })
 
 @app.route('/get_trades', methods=['GET'])
