@@ -3,35 +3,21 @@ body {
     color: #e0e0e0;
     font-family: Arial, sans-serif;
 }
-
 .container {
-    max-width: 800px;
-    margin: 0 auto;
+    width: 80%;
+    margin: auto;
     padding: 20px;
 }
-
 h1, h2 {
-    color: #90caf9;
+    color: #bb86fc;
 }
-
 button {
-    background-color: #1e88e5;
-    color: white;
+    background-color: #bb86fc;
+    color: #121212;
     border: none;
     padding: 10px 20px;
     cursor: pointer;
 }
-
 button:hover {
-    background-color: #1565c0;
-}
-
-.metrics, .controls, .trades {
-    margin-bottom: 20px;
-}
-
-#metrics, #trades {
-    background-color: #1e1e1e;
-    padding: 10px;
-    border-radius: 5px;
+    background-color: #3700b3;
 }
