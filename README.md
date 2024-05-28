@@ -28,6 +28,7 @@ trading_bot/
 1. Set Up Environment:
 
 + Choose a programming language (e.g., Python for simplicity and ease of use with numerous libraries, or Go for performance).
+
 + Install necessary libraries (e.g., requests, websocket-client for Python).
 
 2. Data Ingestion:

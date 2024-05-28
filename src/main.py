@@ -1,4 +1,3 @@
-from joblib import load
 import pandas as pd
 import json
 from datetime import datetime
@@ -26,6 +25,8 @@ model = load_model(filename)
 # Fetch historical data
 historical_data = fetch_historical_data_from_db()
 
+SIMULATION_MODE = True  # Set to False for live trading
+
 async def fetch_data(url):
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
@@ -47,11 +48,24 @@ async def process_real_time_data_async(data):
 
     # Execute trade if an anomaly is detected
     if predictions is not None and predictions[-1] == 1:
-        execute_trade('buy', 1000)  # Example trade side 'buy', amount 1000
+        if SIMULATION_MODE:
+            await simulate_trade('buy', 1000)  # Example trade side 'buy', amount 1000
+        else:
+            execute_trade('buy', 1000)
 
     # Check if losses exceed threshold
     if total_loss <= loss_threshold:
         await cease_live_executions()
+
+async def simulate_trade(side, amount):
+    global total_loss, trade_count, equity_curve
+
+    # Simulate trade logic
+    trade_count += 1
+    trade_result = amount * 0.01  # Example gain/loss calculation
+    total_loss += -trade_result if side == 'buy' else trade_result
+    equity_curve.append(total_loss)
+    await logger.info(f"Simulated {side} trade: amount={amount}, trade_result={trade_result}, total_loss={total_loss}")
 
 async def on_message(message):
     data = json.loads(message)
