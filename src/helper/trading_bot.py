@@ -14,29 +14,22 @@ from sklearn.svm import SVC
 from sklearn.metrics import classification_report, accuracy_score
 from sklearn.preprocessing import MinMaxScaler
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-#from sqlalchemy import create_engine
 
-# Configure logging
 logging.basicConfig(filename='trading_bot.log', level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s')
 
-# Constants
 API_BASE_URL = "https://api.exchange.com"
 WEBSOCKET_URL = "wss://ws.exchange.com/realtime"
 SYMBOL = "BTCUSD"
 TRADE_AMOUNT = 0.01
 
-# Parameters
-MAX_POSITION_SIZE = 10000  # Maximum position size in USD
-STOP_LOSS_PERCENT = 0.05  # 5% stop-loss
+MAX_POSITION_SIZE = 10000
+STOP_LOSS_PERCENT = 0.05
 
-# Training parameters
 TRAINING_SPLIT_RATIO = 0.8
 TRAINING_CV_FOLDS = 5
 
-# Database configuration
 DB_URI = "sqlite:///trading_bot.db"
 
-# Define risk management parameters
 def calculate_position_size(account_balance, risk_per_trade):
     position_size = account_balance * risk_per_trade
     return min(position_size, MAX_POSITION_SIZE)
@@ -65,7 +58,7 @@ def calculate_features(data):
     data.dropna(inplace=True, how='any')
     return data
 
-def train_model(X, y):
+def train_model(train_features, y):
     models = [
         ('RandomForest', RandomForestClassifier()),
         ('GradientBoosting', GradientBoostingClassifier()),
@@ -84,7 +77,7 @@ def train_model(X, y):
         }
 
         grid_search = GridSearchCV(model, param_grid, cv=TRAINING_CV_FOLDS, scoring='accuracy')
-        grid_search.fit(X, y)
+        grid_search.fit(train_features, y)
 
         if grid_search.best_score_ > best_score:
             best_score = grid_search.best_score_
@@ -113,17 +106,17 @@ def main(args):
 
     if args.train:
         split_index = int(len(historical_data) * TRAINING_SPLIT_RATIO)
-        X_train = historical_data[:split_index]
-        y_train = np.sign(X_train.pop('price_change'))
+        train_features = historical_data[:split_index]
+        y_train = np.sign(train_features.pop('price_change'))
 
-        model = train_model(X_train, y_train)
+        model = train_model(train_features, y_train)
         store_model(model, 'optimized_model.pkl')
 
     elif args.predict:
         model = load_model('optimized_model.pkl')
-        X_test = preprocess_data(fetch_data(SYMBOL))
-        y_pred = model.predict(X_test)
-        print(classification_report(np.sign(X_test.pop('price_change')), y_pred))
+        test_features = preprocess_data(fetch_data(SYMBOL))
+        y_pred = model.predict(test_features)
+        print(classification_report(np.sign(test_features.pop('price_change')), y_pred))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Trading Bot")

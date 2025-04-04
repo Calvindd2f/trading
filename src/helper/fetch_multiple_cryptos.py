@@ -53,7 +53,7 @@ def calculate_indicators(df):
     df['momentum'] = talib.MOM(df['price'], timeperiod=4)
     df['volatility'] = df['price'].rolling(window=20).std() / df['price'].rolling(window=20).mean()
     df['rsi'] = talib.RSI(df['price'], timeperiod=14)
-    df['macd'], macdsignal, macdhist = talib.MACD(df['price'], fastperiod=12, slowperiod=26, signalperiod=9)
+    df['macd'], _, _ = talib.MACD(df['price'], fastperiod=12, slowperiod=26, signalperiod=9)
     return df
 
 def save_data(df, filename):

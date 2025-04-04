@@ -15,7 +15,11 @@ async def call_powershell_script(ps_script_path):
     stdout, stderr = await process.communicate()
 
     if process.returncode != 0:
-        raise Exception(f"PowerShell script failed with error: {stderr.decode()}")
+        raise subprocess.CalledProcessError(
+            process.returncode,
+            ['powershell.exe', '-File', ps_script_path],
+            stderr.decode()
+        )
     else:
         print(stdout.decode())
 

@@ -19,12 +19,12 @@ def get_features_and_labels(data):
         'price_change', 'volume_change', 'ma_10', 'ma_50', 'ma_200', 
         'ma_diff', 'std_10', 'std_50', 'momentum', 'volatility', 'rsi', 'macd'
     ]
-    X = data[features]
+    features_data = data[features]
     y = data['label']
-    return X, y
+    return features_data, y
 
 # Model selection and hyperparameter tuning
-def tune_models(X_train, y_train):
+def tune_models(train_features, y_train):
     models = {
         'RandomForest': RandomForestClassifier(random_state=42),
         'GradientBoosting': GradientBoostingClassifier(random_state=42),
@@ -53,42 +53,42 @@ def tune_models(X_train, y_train):
     best_models = {}
 
     for model_name in models:
-        logging.info(f"Starting GridSearch for {model_name}")
+        logging.info("Starting GridSearch for %s", model_name)
         grid_search = GridSearchCV(estimator=models[model_name], param_grid=param_grids[model_name], cv=3, n_jobs=-1, verbose=2)
-        grid_search.fit(X_train, y_train)
+        grid_search.fit(train_features, y_train)
         best_models[model_name] = grid_search.best_estimator_
-        logging.info(f"Best parameters for {model_name}: {grid_search.best_params_}")
+        logging.info("Best parameters for %s: %s", model_name, grid_search.best_params_)
 
     return best_models
 
 # Evaluate best models
-def evaluate_models(models, X_test, y_test):
+def evaluate_models(models, test_features, y_test):
     for model_name, model in models.items():
-        y_pred = model.predict(X_test)
-        logging.info(f"Model: {model_name}")
-        logging.info(f"\n{classification_report(y_test, y_pred)}")
-        logging.info(f"Accuracy: {accuracy_score(y_test, y_pred)}\n")
+        y_pred = model.predict(test_features)
+        logging.info("Model: %s", model_name)
+        logging.info("\n%s", classification_report(y_test, y_pred))
+        logging.info("Accuracy: %s\n", accuracy_score(y_test, y_pred))
 
 # Save the best model
 def save_best_model(model, filepath):
     joblib.dump(model, filepath)
-    logging.info(f"Model saved to {filepath}")
+    logging.info("Model saved to %s", filepath)
 
 def main():
     # Load data
     data = load_data('data/historical_data.csv')
 
     # Get features and labels
-    X, y = get_features_and_labels(data)
+    features_data, y = get_features_and_labels(data)
 
     # Split data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    train_features, test_features, y_train, y_test = train_test_split(features_data, y, test_size=0.2, random_state=42)
 
     # Tune models
-    best_models = tune_models(X_train, y_train)
+    best_models = tune_models(train_features, y_train)
 
     # Evaluate models
-    evaluate_models(best_models, X_test, y_test)
+    evaluate_models(best_models, test_features, y_test)
 
     # Save the best model (adjust based on your evaluation results)
     best_model = best_models['GradientBoosting']  # Replace with the model that performs the best

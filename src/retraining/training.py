@@ -46,7 +46,7 @@ def preprocess_data(data, future_period=1):
     data['rsi'] = talib.RSI(data['price'], timeperiod=14)
 
     # Calculate the Moving Average Convergence Divergence
-    data['macd'], macdsignal, macdhist = talib.MACD(data['price'], fastperiod=12, slowperiod=26, signalperiod=9)
+    data['macd'], _, _ = talib.MACD(data['price'], fastperiod=12, slowperiod=26, signalperiod=9)
 
     # Create the label column
     data['label'] = create_labels(data['price'], future_period)
@@ -93,10 +93,10 @@ def train_model(data, features):
     dict
         A dictionary containing the best models for each model type.
     """
-    X = data[features]
+    features_data = data[features]
     y = data['label']
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    train_features, test_features, y_train, _ = train_test_split(features_data, y, test_size=0.2, random_state=42)
 
     models = {
         'GradientBoosting': GradientBoostingClassifier(random_state=42),
@@ -120,15 +120,15 @@ def train_model(data, features):
 
     for model_name in models:
         grid_search = GridSearchCV(estimator=models[model_name], param_grid=param_grids[model_name], cv=3, n_jobs=-1, verbose=2)
-        grid_search.fit(X_train, y_train)
+        grid_search.fit(train_features, y_train)
         best_models[model_name] = grid_search.best_estimator_
-        logging.info(f"Best parameters for {model_name}: {grid_search.best_params_}")
+        logging.info("Best parameters for %s: %s", model_name, grid_search.best_params_)
 
     return best_models
 
 def save_model(model, filepath):
     joblib.dump(model, filepath)
-    logging.info(f"Model saved to {filepath}")
+    logging.info("Model saved to %s", filepath)
 
 def select_random_cryptos(data, n=3):
     cryptos = data['crypto'].unique()
@@ -153,7 +153,7 @@ def three_pass_training(data: pd.DataFrame, features: List[str], n_passes: int =
     random_cryptos = random.sample(list(cryptos), n_passes * n_cryptos)
     for i in range(n_passes):
         selected_cryptos = random_cryptos[i * n_cryptos:(i + 1) * n_cryptos]
-        logging.info(f"Selected cryptos for this pass: {selected_cryptos}")
+        logging.info("Selected cryptos for this pass: %s", selected_cryptos)
         subset = data[data['crypto'].isin(selected_cryptos)]
         processed_data = preprocess_data(subset)
         best_models = train_model(processed_data, features)
@@ -161,7 +161,7 @@ def three_pass_training(data: pd.DataFrame, features: List[str], n_passes: int =
         results.append(evaluate_model(best_model, processed_data, features))
 
     final_result = aggregate_results(results)
-    logging.info(f"Final result after three passes: {final_result}")
+    logging.info("Final result after three passes: %s", final_result)
     return best_model if final_result > 0 else None
 
 def evaluate_model(model: GradientBoostingClassifier, data: pd.DataFrame, features: List[str]) -> float:
@@ -183,13 +183,13 @@ def evaluate_model(model: GradientBoostingClassifier, data: pd.DataFrame, featur
     if features is None:
         raise ValueError("Features cannot be None")
 
-    X = data[features].values
+    features_data = data[features].values
     y = data['label'].values
 
-    if X is None or y is None or len(X) != len(y):
-        raise ValueError("X and y must have the same length")
+    if features_data is None or y is None or len(features_data) != len(y):
+        raise ValueError("Features and labels must have the same length")
 
-    y_pred = model.predict(X)
+    y_pred = model.predict(features_data)
     if y_pred is None:
         raise ValueError("Model did not return a prediction")
 

@@ -66,13 +66,13 @@ def create_labels(price_series: pd.Series, future_period: int = 1) -> pd.Series:
     return label
 
 # Function to train the ensemble model
-def train_ensemble_model(model, X_train, y_train):
-    model.fit(X_train, y_train)
+def train_ensemble_model(model, train_features, y_train):
+    model.fit(train_features, y_train)
     return model
 
 # Function to evaluate the ensemble model
-def evaluate_ensemble_model(model, X_test, y_test):
-    y_pred = model.predict(X_test)
+def evaluate_ensemble_model(model, test_features, y_test):
+    y_pred = model.predict(test_features)
     print("Ensemble Model")
     print(classification_report(y_test, y_pred))
     print(f"Accuracy: {accuracy_score(y_test, y_pred)}")
@@ -83,13 +83,13 @@ def save_model(model, file_path='optimized_pump_dump_ensemble_model.pkl'):
     logging.info(f"Model saved to {file_path}")
 
 # Function to train and evaluate Logistic Regression model
-def train_log_reg_model(X_train, y_train):
+def train_log_reg_model(train_features, y_train):
     log_reg = LogisticRegression(penalty='l2', C=1.0, solver='liblinear', random_state=42)
-    log_reg.fit(X_train, y_train)
+    log_reg.fit(train_features, y_train)
     return log_reg
 
-def evaluate_log_reg_model(model, X_test, y_test):
-    y_pred = model.predict(X_test)
+def evaluate_log_reg_model(model, test_features, y_test):
+    y_pred = model.predict(test_features)
     print("Logistic Regression with L2 Regularization")
     print(classification_report(y_test, y_pred))
     print(f"Accuracy: {accuracy_score(y_test, y_pred)}")
@@ -131,16 +131,16 @@ def main():
     X = data[features]
     y = data['label']
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    train_features, test_features, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     # Train and evaluate ensemble model
-    ensemble_model = train_ensemble_model(ensemble_model, X_train, y_train)
-    evaluate_ensemble_model(ensemble_model, X_test, y_test)
+    ensemble_model = train_ensemble_model(ensemble_model, train_features, y_train)
+    evaluate_ensemble_model(ensemble_model, test_features, y_test)
     save_model(ensemble_model, 'optimized_pump_dump_ensemble_model.pkl')
 
     # Train and evaluate Logistic Regression model
-    log_reg = train_log_reg_model(X_train, y_train)
-    evaluate_log_reg_model(log_reg, X_test, y_test)
+    log_reg = train_log_reg_model(train_features, y_train)
+    evaluate_log_reg_model(log_reg, test_features, y_test)
     save_model(log_reg, 'optimized_pump_dump_log_reg_model.pkl')
 
 if __name__ == "__main__":
