@@ -67,12 +67,40 @@ def calculate_rsi(prices: np.ndarray, window: int = 14) -> np.ndarray:
 
 @jit
 def calculate_macd(prices: np.ndarray, slow: int = 26, fast: int = 12, signal: int = 9):
-    exp1 = pd.Series(prices).ewm(span=fast, adjust=False).mean()
-    exp2 = pd.Series(prices).ewm(span=slow, adjust=False).mean()
+    # Convert prices to numpy array if it's not already
+    prices = np.asarray(prices)
+    
+    # Calculate EMAs using numpy
+    exp1 = np.zeros_like(prices)
+    exp2 = np.zeros_like(prices)
+    
+    # Initialize EMAs
+    exp1[0] = prices[0]
+    exp2[0] = prices[0]
+    
+    # Calculate smoothing factors
+    alpha1 = 2.0 / (fast + 1)
+    alpha2 = 2.0 / (slow + 1)
+    alpha_signal = 2.0 / (signal + 1)
+    
+    # Calculate EMAs
+    for i in range(1, len(prices)):
+        exp1[i] = alpha1 * prices[i] + (1 - alpha1) * exp1[i-1]
+        exp2[i] = alpha2 * prices[i] + (1 - alpha2) * exp2[i-1]
+    
+    # Calculate MACD line
     macd = exp1 - exp2
-    signal_line = macd.ewm(span=signal, adjust=False).mean()
+    
+    # Calculate signal line
+    signal_line = np.zeros_like(macd)
+    signal_line[0] = macd[0]
+    for i in range(1, len(macd)):
+        signal_line[i] = alpha_signal * macd[i] + (1 - alpha_signal) * signal_line[i-1]
+    
+    # Calculate MACD histogram
     macd_hist = macd - signal_line
-    return macd.values, signal_line.values, macd_hist.values
+    
+    return macd, signal_line, macd_hist
 
 def fetch_historical_data_from_db(db_path='trading_bot.db', table_name='historical_data') -> pd.DataFrame:
     conn = sqlite3.connect(db_path)
