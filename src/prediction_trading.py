@@ -4,6 +4,7 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 import aiohttp
 
+
 def make_prediction(model: LinearRegression, data: pd.DataFrame) -> float:
     """
     Make a prediction using the trained model
@@ -16,8 +17,9 @@ def make_prediction(model: LinearRegression, data: pd.DataFrame) -> float:
         float: The prediction
     """
     # Make a prediction using the trained model
-    prediction = model.predict([data.values[0]])  # mypy
+    prediction = model.predict([data.values[0]])
     return prediction[0]
+
 
 def execute_trade(api_key: str, symbol: str, action: str, quantity: int) -> None:
     """
@@ -36,7 +38,13 @@ def execute_trade(api_key: str, symbol: str, action: str, quantity: int) -> None
     # Use an asynchronous API to execute the trade, so that the main thread is not blocked
     # Use a thread pool to limit the number of threads created
 
-    async def execute_trade_async(session: aiohttp.ClientSession, api_key: str, symbol: str, action: str, quantity: int) -> None:
+    async def execute_trade_async(
+        session: aiohttp.ClientSession,
+        api_key: str,
+        symbol: str,
+        action: str,
+        quantity: int,
+    ) -> None:
         """
         Execute a trade using an exchange API
 
@@ -51,15 +59,12 @@ def execute_trade(api_key: str, symbol: str, action: str, quantity: int) -> None
             None
         """
         url = f"https://api.example.com/v3/order"
-        headers = {
-            "X-MBX-APIKEY": api_key,
-            "Content-Type": "application/json"
-        }
+        headers = {"X-MBX-APIKEY": api_key, "Content-Type": "application/json"}
         data = {
             "symbol": symbol,
             "side": action,
             "type": "MARKET",
-            "quantity": quantity
+            "quantity": quantity,
         }
         try:
             async with session.post(url, headers=headers, json=data) as response:

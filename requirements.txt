@@ -1,21 +1,75 @@
-# Import necessary libraries
-import pandas as pd
-import numpy as np
-import websocket
-from joblib import dump, load
-import numba
+# Core dependencies
+numpy>=1.21.0
+pandas>=1.3.0
+scikit-learn>=1.0.0
+matplotlib>=3.4.0
+plotly>=5.3.0
 
-# Optionally, you can specify the version of the packages to ensure consistency
-# pd.__version__ = '1.2.3'
-# np.__version__ = '1.21.0'
-# websocket.__version__ = '1.3.2'
-# joblib.__version__ = '1.1.0'
-# numba.__version__ = '0.53.1'
+# Web framework
+fastapi>=0.68.0
+uvicorn>=0.15.0
+dash>=2.0.0
+dash-bootstrap-components>=1.0.0
 
-# You can also add any necessary context or comments to your code
-# for better readability and understanding
+# Data processing
+yfinance>=0.1.70
+ta>=0.7.0
+python-dotenv>=0.19.0
 
-# Example usage:
-# df = pd.DataFrame(np.random.rand(10, 5))
-# dump(df, 'df.joblib')  # Save DataFrame to disk
-# loaded_df = load('df.joblib')  # Load DataFrame from disk
+# Deep Learning
+torch>=1.10.0
+torchvision>=0.11.0
+torchaudio>=0.10.0
+
+# Utilities
+tqdm>=4.62.0
+joblib>=1.0.0
+pyyaml>=5.4.0
+python-dateutil>=2.8.2
+pytz>=2021.1
+
+# Logging
+loguru>=0.5.3
+
+# Data Fetching
+alpha_vantage>=2.3.1
+finnhub-python>=2.4.5
+polygon-api-client>=1.10.0
+twelvedata>=0.2.4
+
+# Technical Analysis
+ta-lib>=0.4.24
+pandas-ta>=0.3.14b
+
+# Machine Learning
+xgboost>=1.5.0
+lightgbm>=3.3.0
+catboost>=1.0.0
+optuna>=2.10.0
+
+# NLP
+transformers>=4.15.0
+nltk>=3.6.5
+spacy>=3.2.0
+
+# Visualization
+seaborn>=0.11.2
+
+# Database
+sqlalchemy>=1.4.23
+pymongo>=3.12.0
+redis>=4.0.2
+
+# Testing
+pytest>=6.2.5
+pytest-cov>=2.12.1
+
+# Documentation
+sphinx>=4.1.2
+mkdocs>=1.2.3
+
+# Development
+black>=21.9b0
+flake8>=3.9.2
+isort>=5.9.3
+mypy>=0.910

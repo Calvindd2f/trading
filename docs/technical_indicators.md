@@ -1,17 +1,77 @@
-How can we best extract technical indicators from historical data?
+# Technical Indicators in Our Trading System
 
-Edit
+## Implemented Indicators
 
-Extracting technical indicators from historical data is a crucial step in building a trading bot. Here are some best practices to help you extract technical indicators from historical data:
+### 1. Bollinger Bands
+- Used in `BollingerBandsStrategy`
+- Parameters:
+  - Period: 20 (default)
+  - Standard Deviation: 2.0 (default)
+- Signals:
+  - Buy: Price crosses below lower band
+  - Sell: Price crosses above upper band
 
-1. Choose relevant technical indicators: Select a set of technical indicators that are relevant to your trading strategy. Some popular indicators include: * Moving Averages (MA, EMA, SMA) * Relative Strength Index (RSI) * Bollinger Bands (BB) * Stochastic Oscillator (SO) * MACD (Moving Average Convergence Divergence) * On Balance Volume (OBV) * Force Index (FI)
+### 2. Mean Reversion
+- Used in `MeanReversionStrategy`
+- Parameters:
+  - Lookback Period: 20 (default)
+  - Entry Threshold: 2.0 (default)
+  - Exit Threshold: 0.5 (default)
+- Signals:
+  - Buy: Price significantly below mean (z-score < -entry_threshold)
+  - Sell: Price significantly above mean (z-score > entry_threshold)
 
-2. Prepare your historical data: Ensure your historical data is clean, complete, and in a suitable format for calculation. You may need to: * Handle missing values (e.g., interpolate or impute) * Convert data types (e.g., datetime, numeric) * Normalize or scale the data (e.g., to prevent feature dominance)
+### 3. MACD
+- Used in `MACDStrategy`
+- Parameters:
+  - Fast Period: 12 (default)
+  - Slow Period: 26 (default)
+  - Signal Period: 9 (default)
+- Signals:
+  - Buy: MACD crosses above signal line
+  - Sell: MACD crosses below signal line
 
-3. Calculate technical indicators: Use libraries like pandas, numpy, and ta-lib (Technical Analysis Library) to calculate technical indicators. For example: * pandas provides functions like rolling_mean and ewm for calculating moving averages. * ta-lib offers a wide range of technical indicators, including RSI, BB, and MACD. * numpy can be used for more complex calculations, like stochastic oscillators.
+## Implementation Details
 
-4. Consider different time frames: Calculate technical indicators for various time frames to capture different market dynamics. For example: * Short-term indicators (e.g., 5-minute, 1-hour) for intraday trading * Medium-term indicators (e.g., 4-hour, daily) for swing trading * Long-term indicators (e.g., weekly, monthly) for position trading
+All indicators are implemented in the `src/core/strategies` directory:
+- `bollinger_bands.py`
+- `mean_reversion.py`
+- `macd.py`
 
-5. Store and manage indicator data: Store the calculated technical indicators in a database or data structure (e.g., pandas DataFrame) for easy access and manipulation. Consider using a data storage solution like sqlite or mongodb for larger datasets.
+Each strategy:
+- Inherits from `BaseStrategy`
+- Implements `generate_signals()`
+- Includes parameter optimization
+- Supports position sizing
+- Integrates with risk management
 
-6. Visualize and validate: Visualize the technical indicators using charts and graphs to ensure they are calculated correctly and make sense in the context of your trading strategy. Validate the indicators by backtesting them on historical data to evaluate their performance.
+## Usage Example
+
+```python
+from src.core.strategies.bollinger_bands import BollingerBandsStrategy
+from src.core.strategies.mean_reversion import MeanReversionStrategy
+from src.core.strategies.macd import MACDStrategy
+
+# Initialize strategies
+bb_strategy = BollingerBandsStrategy(period=20, std_dev=2.0)
+mr_strategy = MeanReversionStrategy(lookback_period=20, entry_threshold=2.0)
+macd_strategy = MACDStrategy(fast_period=12, slow_period=26, signal_period=9)
+
+# Generate signals
+signals = strategy.generate_signals(data)
+```
+
+## Optimization
+
+Each strategy includes parameter optimization:
+- Grid search over parameter ranges
+- Performance evaluation using Sharpe ratio
+- Validation on out-of-sample data
+
+## Integration
+
+Strategies are integrated with:
+- Market data fetcher
+- Portfolio manager
+- Risk manager
+- Web dashboard

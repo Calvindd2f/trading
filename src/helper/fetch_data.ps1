@@ -1,10 +1,8 @@
-# Define global variables and constants
 $cryptoId = "maga-hat"
 $vsCurrency = "eur"
 $days = 2
 $tempJsonFile = "data/historical_data.json"
 
-# Function to send API requests with retry and pagination
 function Send-ApiRequest {
     [CmdletBinding()]
     param (
@@ -50,7 +48,6 @@ function Send-ApiRequest {
     return $response
 }
 
-# Function to process the API response and save raw JSON to a file
 function Save-RawJson {
     [CmdletBinding()]
     param (
@@ -72,7 +69,6 @@ function Save-RawJson {
 }
 
 function Execute() {
-    # Main script execution
     try {
         $url = "https://api.coingecko.com/api/v3/coins/$cryptoId/market_chart?vs_currency=$vsCurrency&days=$days"
         $apiResponse = Send-ApiRequest -Url $url

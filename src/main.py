@@ -25,7 +25,7 @@ model = load_model(filename)
 # Fetch historical data
 historical_data = fetch_historical_data_from_db()
 
-SIMULATION_MODE = True  # Set to False for live trading
+SIMULATION_MODE = True
 
 
 async def fetch_data(url):
