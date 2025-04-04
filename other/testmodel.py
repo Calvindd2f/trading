@@ -13,6 +13,7 @@ from typing import Dict
 BUY_THRESHOLD = 0.05
 SELL_THRESHOLD = -0.05
 INITIAL_BACKOFF = 60 * 5  # 5 minutes
+HISTORICAL_DATA_FILE = 'historical_data.csv'
 
 def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
     df['price_change'] = df['price'].pct_change()
@@ -35,7 +36,7 @@ def fetch_historical_data(symbol: str) -> pd.DataFrame:
     # Implement fetching historical data here
     pass
 
-def train_models(X: pd.DataFrame, y: pd.Series) -> Dict[str, any]:
+def train_models(features: pd.DataFrame, y: pd.Series) -> Dict[str, any]:
     models = {
         'RandomForest': RandomForestClassifier(n_estimators=100, random_state=42),
         'GradientBoosting': GradientBoostingClassifier(n_estimators=100, random_state=42),
@@ -45,8 +46,8 @@ def train_models(X: pd.DataFrame, y: pd.Series) -> Dict[str, any]:
     results = {}
 
     for model_name, model in models.items():
-        model.fit(X, y)
-        y_pred = model.predict(X)
+        model.fit(features, y)
+        y_pred = model.predict(features)
         results[model_name] = {
             'classification_report': classification_report(y, y_pred),
             'accuracy_score': accuracy_score(y, y_pred)
@@ -61,10 +62,10 @@ def backtest_trading_bot(historical_data: pd.DataFrame):
 if __name__ == "__main__":
     symbols = ["BTCUSD", "ETHUSD", "LTCUSD"]
     all_data = pd.concat([preprocess_data(fetch_historical_data(symbol)) for symbol in symbols])
-    all_data.to_csv('historical_data.csv', index=False)
+    all_data.to_csv(HISTORICAL_DATA_FILE, index=False)
 
     model = joblib.load('pump_dump_model.pkl')
-    data = pd.read_csv('historical_data.csv')
+    data = pd.read_csv(HISTORICAL_DATA_FILE)
 
     features = ['price_change', 'volume_change', 'ma_10', 'ma_50', 'ma_200', 'ma_diff', 'std_10', 'std_50', 'momentum', 'volatility']
     X = data[features]
@@ -76,7 +77,7 @@ if __name__ == "__main__":
     print(model_results)
 
     # Load preprocessed data
-    data = pd.read_csv('historical_data.csv')
+    data = pd.read_csv(HISTORICAL_DATA_FILE)
 
     # Backtest the trading bot using historical data
     backtest_trading_bot(data)
