@@ -1,4 +1,4 @@
-name: Build TA-Lib wheels for Windows
+#name: Build TA-Lib wheels for Windows
 
 on:
   workflow_dispatch:
