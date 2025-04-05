@@ -80,6 +80,7 @@ hr {
   src: local('Material Icons'),
     local('MaterialIcons-Regular'),
     url(/res/misc/MaterialIcons.woff2) format('truetype');
+  font-family: 'Material Icons', system-ui, sans-serif;
 }
 
 .icon {

@@ -383,6 +383,34 @@ class ModelUtils:
         return study.best_params
     
     @staticmethod
+    def create_lstm_model(
+        learning_rate: float = 0.001,
+        dropout_rate: float = 0.3,
+        lstm_units: int = 128
+    ) -> Sequential:
+        """Create an LSTM model with specified parameters."""
+        model = Sequential([
+            Bidirectional(LSTM(lstm_units, return_sequences=True), input_shape=(10, 12)),
+            LayerNormalization(),
+            Dropout(dropout_rate),
+            Bidirectional(LSTM(lstm_units // 2, return_sequences=True)),
+            LayerNormalization(),
+            Dropout(dropout_rate),
+            Bidirectional(LSTM(lstm_units // 4)),
+            LayerNormalization(),
+            Dropout(dropout_rate),
+            Dense(64, activation='relu'),
+            Dense(32, activation='relu'),
+            Dense(len(MarketRegime), activation='softmax')
+        ])
+        model.compile(
+            optimizer=Adam(learning_rate=learning_rate),
+            loss='categorical_crossentropy',
+            metrics=['accuracy']
+        )
+        return model
+    
+    @staticmethod
     def save_model(model: Union[RandomForestClassifier, Sequential, VotingClassifier], path: str) -> None:
         """Save a model to disk."""
         try:
